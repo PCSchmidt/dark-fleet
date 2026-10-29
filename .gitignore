@@ -1,0 +1,22 @@
+# Unreal Engine
+Binaries/
+Build/
+DerivedDataCache/
+Intermediate/
+Saved/
+.vs/
+.idea/
+*.VC.db
+*.VC.opendb
+*.sln
+*.suo
+*.opensdf
+*.sdf
+*.xcodeproj
+*.xcworkspace
+# Keep Build/ config if added deliberately
+!Build/Build.version.template
+# Local tooling and data caches
+.tools/
+data-cache/
+*.tmp
