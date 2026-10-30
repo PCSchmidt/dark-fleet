@@ -30,7 +30,7 @@
 | Mutation test: 600 deliberately leaky observations (exact truth number, secret string, forbidden key) | 600/600 detected |
 | Python tests (15): schema validity, bad-document rejection, observation conformance to schema over 50 ticks x 2 roles, typed errors, determinism, Python-side leak fuzz | Passed |
 | GitHub Actions CI on `hyperreal-platform` (Ubuntu + Windows) | Passed |
-| GitHub Actions CI on `dark-fleet` | See repository Actions tab; recorded below when green |
+| GitHub Actions CI on `dark-fleet` (Ubuntu + Windows; C++ and Python tests, run 41064306146 at commit 6397b6a) | Passed |
 
 Commands (from a clean clone with `git submodule update --init`):
 ```
