@@ -320,6 +320,54 @@
         },
         "target_class": {
           "type": "string"
+        },
+        "brief": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "mode"
+          ],
+          "properties": {
+            "mode": {
+              "enum": [
+                "mmsi",
+                "profile"
+              ]
+            },
+            "last_known": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "x_m",
+                "y_m",
+                "sigma_m"
+              ],
+              "properties": {
+                "x_m": {
+                  "type": "number"
+                },
+                "y_m": {
+                  "type": "number"
+                },
+                "sigma_m": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                }
+              }
+            }
+          },
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "profile"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "last_known"
+            ]
+          }
         }
       }
     }

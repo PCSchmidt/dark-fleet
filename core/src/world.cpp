@@ -114,6 +114,20 @@ Status World::from_scenario(const json& s, World& out) {
         return err(hr::ErrorCode::Schema, "mission.delivery");
       if (!get(m, "target_mmsi", w.target_mmsi_) || !get(m, "target_class", w.target_class_))
         return err(hr::ErrorCode::Schema, "mission.target");
+      if (m.contains("brief")) {
+        const json& b = m.at("brief");
+        std::string mode;
+        if (!b.is_object() || !get(b, "mode", mode) || (mode != "mmsi" && mode != "profile"))
+          return err(hr::ErrorCode::Schema, "mission.brief.mode");
+        if (mode == "profile") {
+          if (!b.contains("last_known")) return err(hr::ErrorCode::Schema, "mission.brief.last_known");
+          const json& lk = b.at("last_known");
+          if (!get(lk, "x_m", w.last_known_x_) || !get(lk, "y_m", w.last_known_y_) ||
+              !get(lk, "sigma_m", w.last_known_sigma_) || w.last_known_sigma_ <= 0.0)
+            return err(hr::ErrorCode::Schema, "mission.brief.last_known");
+          w.brief_profile_ = true;
+        }
+      }
     }
 
     int runners = 0;
@@ -425,6 +439,10 @@ HunterPrivate World::hunter_private() const {
   HunterPrivate h;
   h.target_mmsi = target_mmsi_;
   h.target_class = target_class_;
+  h.brief_profile = brief_profile_;
+  h.last_known_x_m = last_known_x_;
+  h.last_known_y_m = last_known_y_;
+  h.last_known_sigma_m = last_known_sigma_;
   h.sar_remaining = sar_remaining_;
   h.sar_footprint_radius_m = sar_radius_m_;
   h.pending = pending_;

@@ -18,7 +18,7 @@ import numpy as np
 def _target_fixes(obs: dict) -> list[tuple[int, float, float]]:
     """(fix_tick, x, y) for every visible AIS contact of the briefed target."""
     brief = obs.get("brief")
-    if not brief:
+    if not brief or "target_mmsi" not in brief:  # profile briefing: target not (yet) identified
         return []
     out = []
     for c in obs["contacts"]:

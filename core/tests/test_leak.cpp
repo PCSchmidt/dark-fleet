@@ -227,6 +227,51 @@ TEST_CASE("Leak fuzz on generated scenarios with SAR tasking and claims (1000 se
   CHECK(claims > 100);
 }
 
+TEST_CASE("Profile briefing: the Hunter is never given the target MMSI, and nothing leaks (300 seeds)") {
+  std::size_t observations = 0;
+  for (std::uint64_t seed = 1; seed <= 300; ++seed) {
+    hr::Rng rng(seed, 300);
+    df::GenParams gp;
+    gp.seed = seed;
+    gp.n_background = 8 + static_cast<int>(rng.below(12));
+    gp.brief_profile = true;
+    df::World w;
+    REQUIRE(df::World::from_scenario(df::generate_scenario(gp), w).ok());
+    TruthLedger ledger;
+    ledger.record(w);
+    for (int t = 0; t < 30 && w.state() == df::EpisodeState::Running; ++t) {
+      (void)w.submit_action_json(random_action_doc(rng, w.tick()));
+      w.step();
+      ledger.record(w);
+      const auto hobs = w.observe(df::Role::Hunter);
+      REQUIRE(hobs.contains("brief"));
+      CHECK_FALSE(hobs["brief"].contains("target_mmsi"));
+      CHECK(hobs["brief"].contains("last_known"));
+      CHECK(hobs["brief"]["last_known"]["sigma_m"] > 0.0);
+      for (df::Role role : {df::Role::Hunter, df::Role::Runner}) {
+        const auto findings = audit(w.observe(role), ledger, role);
+        ++observations;
+        if (!findings.empty()) FAIL("leak at profile seed " << seed << " tick " << t << ": " << findings.front());
+      }
+    }
+  }
+  CHECK(observations > 10000);
+}
+
+TEST_CASE("Profile briefing is optional: legacy scenarios still brief the MMSI") {
+  df::GenParams gp;
+  gp.seed = 5;
+  df::World w;
+  REQUIRE(df::World::from_scenario(df::generate_scenario(gp), w).ok());
+  const auto b = w.observe(df::Role::Hunter)["brief"];
+  CHECK(b["target_mmsi"] == "999000001");
+  CHECK_FALSE(b.contains("last_known"));
+  df::json bad = df::generate_scenario(gp);
+  bad["mission"]["brief"] = {{"mode", "profile"}};  // profile without last_known is a schema error
+  df::World w2;
+  CHECK(df::World::from_scenario(bad, w2).code == hr::ErrorCode::Schema);
+}
+
 TEST_CASE("Mutation test: the harness detects a deliberately leaky observer") {
   std::size_t detected = 0, total = 0;
   for (std::uint64_t seed = 1; seed <= 200; ++seed) {

@@ -156,6 +156,15 @@ json generate_scenario(const GenParams& p) {
     vessels.push_back(std::move(v));
   }
   s["entities"] = {{"vessels", std::move(vessels)}};
+  if (p.brief_profile) {
+    // Drawn last so legacy (MMSI-brief) scenarios are byte-identical to before. The reported
+    // last-known position is the departure area, offset from the true start by up to ~5 km.
+    const double ang = u(rng) * 2.0 * 3.14159265358979323846, dist = u(rng) * 5000.0;
+    s["mission"]["brief"] = {{"mode", "profile"},
+                             {"last_known", {{"x_m", rx + dist * std::sin(ang)},
+                                             {"y_m", ry + dist * std::cos(ang)},
+                                             {"sigma_m", 6000.0}}}};
+  }
   return s;
 }
 

@@ -225,7 +225,7 @@ The Hunter-bot tracking problem and Runner-bot deception problem are genuine res
 
 **Strict separation:** `DFWorld` (truth) -> `DFRoles` (filtered knowledge) -> UI/agents. UI and agent code have no access to truth objects, enforced by module boundaries and the automated information-leak suite (FR-023).
 
-**Front-end choice (first):** a lightweight 2D map client (decision pending among a native C++ immediate-mode UI, a Python desktop UI, or a local web UI served by the Python layer) `[DECIDE at D1; criteria: iteration speed, map rendering, accessibility, ease of recording demos]`. Unreal is introduced at D6 for sensor views only.
+**Front-end choice (first):** a lightweight 2D map client. **Decided at D2: a local web UI** (HTML canvas) served by a standard-library Python server on localhost, because it needs no extra dependencies, iterates fastest and is easiest to screen-record. It talks to the core only through the role-filtered API. Unreal is introduced at D6 for sensor views only.
 
 **Language split:** C++ core; Python for tooling, ML training, agents, benchmark; headless sim for tournaments and CI.
 

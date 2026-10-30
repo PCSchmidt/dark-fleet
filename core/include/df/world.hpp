@@ -90,6 +90,8 @@ struct PendingTask {
 
 struct HunterPrivate {
   std::string target_mmsi, target_class;
+  bool brief_profile = false;  // true: brief omits the MMSI and gives a last-known area instead
+  double last_known_x_m = 0, last_known_y_m = 0, last_known_sigma_m = 0;
   std::uint32_t sar_remaining = 0;
   double sar_footprint_radius_m = 0;
   std::vector<PendingTask> pending;
@@ -218,6 +220,8 @@ class World {
 
   // Mission
   std::string target_mmsi_, target_class_;
+  bool brief_profile_ = false;
+  double last_known_x_ = 0, last_known_y_ = 0, last_known_sigma_ = 0;
   double delivery_x_ = 0, delivery_y_ = 0, delivery_radius_ = 0;
 
   EpisodeState state_ = EpisodeState::Running;

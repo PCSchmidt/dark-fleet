@@ -88,8 +88,20 @@
       "description": "Hunter only: the target of interest as publicly known.",
       "type": "object",
       "additionalProperties": false,
-      "required": ["target_mmsi", "target_class"],
-      "properties": {"target_mmsi": {"type": "string", "pattern": "^[0-9]{9}$"}, "target_class": {"type": "string"}}
+      "required": ["target_class"],
+      "properties": {
+        "target_mmsi": {"type": "string", "pattern": "^[0-9]{9}$"},
+        "target_class": {"type": "string"},
+        "last_known": {
+          "description": "Profile briefing: where the target was last known (no identifier is given).",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["x_m", "y_m", "sigma_m", "tick"],
+          "properties": {"x_m": {"type": "number"}, "y_m": {"type": "number"}, "sigma_m": {"type": "number"}, "tick": {"type": "integer"}}
+        }
+      },
+      "oneOf": [{"required": ["target_mmsi"], "not": {"required": ["last_known"]}},
+                {"required": ["last_known"], "not": {"required": ["target_mmsi"]}}]
     },
     "resources": {
       "description": "Hunter only: own assets and pending orders.",

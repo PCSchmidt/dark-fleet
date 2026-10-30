@@ -1,4 +1,4 @@
-# Traceability (initial, D1)
+# Traceability (initial, D1; D2 rows added)
 
 Maps requirement IDs from [REQUIREMENTS.md](./REQUIREMENTS.md) to evidence. "Partial" means some but not all of the requirement is covered. Unlisted requirements have no implementation yet.
 
@@ -27,6 +27,8 @@ Maps requirement IDs from [REQUIREMENTS.md](./REQUIREMENTS.md) to evidence. "Par
 | FR-060 contracts followed | Partial | schemas v1.1; replay format per DATA_CONTRACTS (JSON, not binary) |
 | FR-061 dataset manifest | N/A (no external datasets used yet) | - |
 | FR-070.. interface | Not started | - |
-| US-1/US-2 playable | Not yet (bots only) | D2 |
+| US-1/US-2 playable | Built; owner playtest pending | `python/darkfleet/play/`, `python/tests/test_play.py`, `docs/D2_EVIDENCE.md` |
+| FR-021 UI uses only the role API | Done for the D2 client | `python/tests/test_play.py` (state never carries truth before the end) |
+| FR-030 evidence/identification without a given MMSI | Partial | profile briefing (`mission.brief.mode = "profile"`), bot target lock and AIS audit |
 | US-3 replay resolves and tamper is rejected | Done | `test_replay.cpp`, `python/tests/test_d1.py` |
 | NFR-001 headless speed | Not measured | - |

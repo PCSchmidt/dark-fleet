@@ -1,0 +1,98 @@
+{
+  "seeds": "dev",
+  "seed_list": [
+    1,
+    20
+  ],
+  "brief": "profile",
+  "rows": [
+    {
+      "runner": "dark_run",
+      "audit": false,
+      "n": 20,
+      "outcomes": {
+        "correct_supported": 20
+      },
+      "audit_results": {
+        "not_run": 20
+      },
+      "lock_correct": 20,
+      "replays_verified": 20,
+      "mean_hunter_score": 123.28
+    },
+    {
+      "runner": "dark_run",
+      "audit": true,
+      "n": 20,
+      "outcomes": {
+        "correct_supported": 20
+      },
+      "audit_results": {
+        "consistent": 20
+      },
+      "lock_correct": 20,
+      "replays_verified": 20,
+      "mean_hunter_score": 124.54
+    },
+    {
+      "runner": "honest",
+      "audit": false,
+      "n": 20,
+      "outcomes": {
+        "runner_delivered": 20
+      },
+      "audit_results": {
+        "not_run": 20
+      },
+      "lock_correct": 20,
+      "replays_verified": 20,
+      "mean_hunter_score": 0.0
+    },
+    {
+      "runner": "honest",
+      "audit": true,
+      "n": 20,
+      "outcomes": {
+        "runner_delivered": 16,
+        "correct_supported": 4
+      },
+      "audit_results": {
+        "consistent": 20
+      },
+      "lock_correct": 20,
+      "replays_verified": 20,
+      "mean_hunter_score": 24.31
+    },
+    {
+      "runner": "spoof",
+      "audit": false,
+      "n": 20,
+      "outcomes": {
+        "runner_delivered": 20
+      },
+      "audit_results": {
+        "not_run": 20
+      },
+      "lock_correct": 19,
+      "replays_verified": 20,
+      "mean_hunter_score": 0.0
+    },
+    {
+      "runner": "spoof",
+      "audit": true,
+      "n": 20,
+      "outcomes": {
+        "correct_supported": 19,
+        "runner_delivered": 1
+      },
+      "audit_results": {
+        "spoof_suspected": 19,
+        "inconclusive": 1
+      },
+      "lock_correct": 19,
+      "replays_verified": 20,
+      "mean_hunter_score": 119.53
+    }
+  ],
+  "all_replays_verified": true
+}

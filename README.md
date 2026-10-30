@@ -2,10 +2,11 @@
 
 An asymmetric hidden-information cat-and-mouse game on a photoreal ocean: a fictional covert tanker versus analysts, aircraft, cutters and satellites. Real geography; entirely fictional vessels, companies and incidents.
 
-**Status:** D0 and D1 complete (headless): engine-independent C++ core with traffic generator, AIS and SAR sensors, claims and scoring, verified replays, role-filter leak harness, plus Python trackers/bots and an evaluation harness. See [docs/D0_EVIDENCE.md](docs/D0_EVIDENCE.md) and [docs/D1_EVIDENCE.md](docs/D1_EVIDENCE.md). It is not yet a playable game (no UI) and is not balanced.
+**Status:** D0 and D1 complete; D2 built, owner playtest pending. Engine-independent C++ core with traffic generator, AIS and SAR sensors, claims and scoring, verified replays and a role-filter leak harness; Python trackers and bots; a local 2D map client where you can play either role against a bot. See [docs/D0_EVIDENCE.md](docs/D0_EVIDENCE.md), [docs/D1_EVIDENCE.md](docs/D1_EVIDENCE.md) and [docs/D2_EVIDENCE.md](docs/D2_EVIDENCE.md). It is playable but **not balanced**, and nobody has playtested it yet.
 
 | Document | Purpose |
 |---|---|
+| [docs/D2_EVIDENCE.md](docs/D2_EVIDENCE.md) | D2 verification evidence, bot results, playtest status and limits |
 | [docs/D1_EVIDENCE.md](docs/D1_EVIDENCE.md) | D1 verification evidence, tracker study and limits |
 | [docs/D0_EVIDENCE.md](docs/D0_EVIDENCE.md) | D0 verification evidence and limits |
 | [docs/TRACEABILITY.md](docs/TRACEABILITY.md) | Requirement to evidence map |
@@ -36,3 +37,10 @@ python -m pip install -r python/requirements-dev.txt
 python -m pytest python/tests -q
 ```
 Requires CMake 3.21+, a C++20 compiler and Python 3.10+.
+
+## Play it (D2)
+```
+PYTHONPATH=build/python:python python -m darkfleet.play.server
+# then open http://127.0.0.1:8765/   (on Windows use ';' in PYTHONPATH)
+```
+Choose Hunter or Runner and press Start. You act on the same role-filtered observations the bots get; the true Runner track is shown only in the debrief, after the replay has been verified by re-simulation. Standard library only; the server binds to localhost.

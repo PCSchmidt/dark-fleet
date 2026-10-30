@@ -114,8 +114,16 @@ json build_observation(const ObservationInputs& in) {
     }
   }
   if (role == Role::Hunter && in.hunter) {
-    if (!in.hunter->target_mmsi.empty())
+    if (in.hunter->brief_profile) {
+      // Profile briefing: the class and where it was last known, never the identifier.
+      obs["brief"] = {{"target_class", in.hunter->target_class},
+                      {"last_known", {{"x_m", in.hunter->last_known_x_m},
+                                      {"y_m", in.hunter->last_known_y_m},
+                                      {"sigma_m", in.hunter->last_known_sigma_m},
+                                      {"tick", 0}}}};
+    } else if (!in.hunter->target_mmsi.empty()) {
       obs["brief"] = {{"target_mmsi", in.hunter->target_mmsi}, {"target_class", in.hunter->target_class}};
+    }
     json pend = json::array();
     for (const PendingTask& p : in.hunter->pending)
       pend.push_back({{"exec_tick", p.exec_tick}, {"x_m", p.x_m}, {"y_m", p.y_m}});

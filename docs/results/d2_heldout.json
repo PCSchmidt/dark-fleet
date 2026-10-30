@@ -1,0 +1,112 @@
+{
+  "seeds": "heldout",
+  "seed_list": [
+    1000,
+    1059
+  ],
+  "brief": "profile",
+  "rows": [
+    {
+      "runner": "dark_run",
+      "audit": false,
+      "n": 60,
+      "outcomes": {
+        "correct_supported": 50,
+        "runner_delivered": 7,
+        "insufficient_support": 1,
+        "wrong_identity": 2
+      },
+      "audit_results": {
+        "not_run": 60
+      },
+      "lock_correct": 54,
+      "replays_verified": 60,
+      "mean_hunter_score": 101.29
+    },
+    {
+      "runner": "dark_run",
+      "audit": true,
+      "n": 60,
+      "outcomes": {
+        "correct_supported": 49,
+        "insufficient_support": 2,
+        "wrong_identity": 4,
+        "runner_delivered": 5
+      },
+      "audit_results": {
+        "consistent": 56,
+        "inconclusive": 4
+      },
+      "lock_correct": 54,
+      "replays_verified": 60,
+      "mean_hunter_score": 99.05
+    },
+    {
+      "runner": "honest",
+      "audit": false,
+      "n": 60,
+      "outcomes": {
+        "runner_delivered": 58,
+        "correct_supported": 2
+      },
+      "audit_results": {
+        "not_run": 60
+      },
+      "lock_correct": 54,
+      "replays_verified": 60,
+      "mean_hunter_score": 4.02
+    },
+    {
+      "runner": "honest",
+      "audit": true,
+      "n": 60,
+      "outcomes": {
+        "insufficient_support": 2,
+        "runner_delivered": 49,
+        "correct_supported": 8,
+        "wrong_identity": 1
+      },
+      "audit_results": {
+        "consistent": 56,
+        "inconclusive": 4
+      },
+      "lock_correct": 54,
+      "replays_verified": 60,
+      "mean_hunter_score": 16.0
+    },
+    {
+      "runner": "spoof",
+      "audit": false,
+      "n": 60,
+      "outcomes": {
+        "runner_delivered": 58,
+        "correct_supported": 2
+      },
+      "audit_results": {
+        "not_run": 60
+      },
+      "lock_correct": 53,
+      "replays_verified": 60,
+      "mean_hunter_score": 4.02
+    },
+    {
+      "runner": "spoof",
+      "audit": true,
+      "n": 60,
+      "outcomes": {
+        "correct_supported": 48,
+        "runner_delivered": 8,
+        "wrong_identity": 4
+      },
+      "audit_results": {
+        "spoof_suspected": 50,
+        "inconclusive": 6,
+        "consistent": 4
+      },
+      "lock_correct": 53,
+      "replays_verified": 60,
+      "mean_hunter_score": 97.27
+    }
+  ],
+  "all_replays_verified": true
+}

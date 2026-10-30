@@ -19,8 +19,9 @@ class EpisodeResult:
     trace: list[dict] = field(default_factory=list)
 
 
-def make_scenario(seed: int, n_background: int = 20, duration_ticks: int = 144, sar_tasks: int = 6) -> dict:
-    return json.loads(core.generate_scenario(seed, n_background, duration_ticks, sar_tasks))
+def make_scenario(seed: int, n_background: int = 20, duration_ticks: int = 144, sar_tasks: int = 6,
+                  brief: str = "mmsi") -> dict:
+    return json.loads(core.generate_scenario(seed, n_background, duration_ticks, sar_tasks, brief))
 
 
 def play(scenario: dict, runner: RunnerPolicy, hunter: HunterBot, record_trace: bool = False) -> EpisodeResult:
