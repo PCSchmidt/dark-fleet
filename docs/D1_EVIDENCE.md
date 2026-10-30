@@ -26,6 +26,7 @@
 | Replay verification (C++): 4 scripted runs verify; round-trip through JSON text verifies; identical scripts give byte-identical replays | Passed |
 | Tamper tests: changed input (naive edit and rehashed edit), deleted input, forged result, forged chain link, wrong scenario, wrong ruleset, garbage, dropped trailing input | All rejected with the expected typed code |
 | Python tests: 33 | Passed |
+| GitHub Actions CI (Ubuntu + Windows; C++ and Python tests incl. the tracker regression guard; run 41070410361, commit bfb78b3) | Passed |
 | Bot episodes (all recorded and then verified by re-simulation): 40+40+20+20 dev episodes and 60+60+20 held-out episodes | 100% verified (`all_replays_verified: true`) |
 
 A false positive found by the harness while building D1 is worth recording: the leak fuzz flagged an exact truth number in the Hunter's own `pending_taskings` because the *test* had tasked SAR at the Runner's exact truth coordinates. That was a test-design error (a real Hunter cannot know truth), not an engine leak; the test was changed to perturb its orders.
