@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/PCSchmidt/dark-fleet/schemas/observation.v1.json",
+  "title": "Dark Fleet observation v1 (role-filtered view)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "role", "tick", "utc_ms", "contacts", "events"],
+  "properties": {
+    "schema_version": {"type": "string", "pattern": "^1\\.[0-9]+\\.[0-9]+$"},
+    "role": {"enum": ["hunter", "runner"]},
+    "tick": {"type": "integer", "minimum": 0},
+    "utc_ms": {"type": "integer", "minimum": 0},
+    "contacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["contact_id", "source", "claimed_mmsi", "claimed_name", "x_m", "y_m", "sigma_m", "age_ticks"],
+        "properties": {
+          "contact_id": {"type": "string", "pattern": "^c-[0-9a-f]{8}$"},
+          "source": {"enum": ["ais"]},
+          "claimed_mmsi": {"type": "string", "pattern": "^[0-9]{9}$"},
+          "claimed_name": {"type": "string", "maxLength": 64},
+          "x_m": {"type": "number"},
+          "y_m": {"type": "number"},
+          "sigma_m": {"type": "number", "exclusiveMinimum": 0},
+          "age_ticks": {"type": "integer", "minimum": 0}
+        }
+      }
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["tick", "kind"],
+        "properties": {
+          "tick": {"type": "integer", "minimum": 0},
+          "kind": {"enum": ["scenario_start", "action_rejected"]},
+          "code": {"type": "string"}
+        }
+      }
+    },
+    "own": {
+      "description": "Present only for role=runner: the runner's knowledge of its own ship.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x_m", "y_m", "speed_mps", "course_deg", "ais_mode"],
+      "properties": {
+        "x_m": {"type": "number"},
+        "y_m": {"type": "number"},
+        "speed_mps": {"type": "number"},
+        "course_deg": {"type": "number"},
+        "ais_mode": {"enum": ["on", "dark", "spoof"]}
+      }
+    }
+  },
+  "allOf": [
+    {"if": {"properties": {"role": {"const": "hunter"}}}, "then": {"not": {"required": ["own"]}}},
+    {"if": {"properties": {"role": {"const": "runner"}}}, "then": {"required": ["own"]}}
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "schema_version": "1.0.0",
+  "scenario_id": "df-example-0001",
+  "title_id": "dark-fleet",
+  "seed": "20261030",
+  "time": {"start_utc_ms": 1793318400000, "tick_s": 60, "duration_ticks": 1440},
+  "sensors": {"ais": {"sigma_m": 40.5, "report_prob": 0.9, "report_interval_ticks": 1, "max_age_ticks": 30}},
+  "entities": {
+    "vessels": [
+      {"id": "truth-runner", "name": "FICTIONAL MERIDIAN STAR", "class": "vlcc", "mmsi": "999000001",
+       "x_m": 1234.5678, "y_m": -8765.4321, "speed_mps": 6.789, "course_deg": 123.456, "max_speed_mps": 8.5,
+       "is_runner": true, "ais_mode": "on", "secret_note": "RUNNER-CANARY-7f3a9c"},
+      {"id": "truth-bg-1", "name": "FICTIONAL ALPHA TRADER", "class": "bulk", "mmsi": "999000002",
+       "x_m": -4000.123, "y_m": 2500.987, "speed_mps": 5.432, "course_deg": 45.678, "max_speed_mps": 7.0,
+       "is_runner": false, "ais_mode": "on", "secret_note": "BG1-CANARY-1b2c3d"},
+      {"id": "truth-bg-2", "name": "FICTIONAL BETA FISHER", "class": "fishing", "mmsi": "999000003",
+       "x_m": 7000.321, "y_m": 7000.654, "speed_mps": 2.111, "course_deg": 270.5, "max_speed_mps": 4.0,
+       "is_runner": false, "ais_mode": "on"}
+    ]
+  }
+}

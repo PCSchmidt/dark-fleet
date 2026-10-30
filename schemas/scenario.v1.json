@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/PCSchmidt/dark-fleet/schemas/scenario.v1.json",
+  "title": "Dark Fleet scenario v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "scenario_id", "title_id", "seed", "time", "sensors", "entities"],
+  "properties": {
+    "schema_version": {"type": "string", "pattern": "^1\\.[0-9]+\\.[0-9]+$"},
+    "scenario_id": {"type": "string", "minLength": 1, "maxLength": 128},
+    "title_id": {"const": "dark-fleet"},
+    "seed": {"type": "string", "pattern": "^[0-9]{1,20}$", "description": "uint64 as a decimal string"},
+    "time": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start_utc_ms", "tick_s", "duration_ticks"],
+      "properties": {
+        "start_utc_ms": {"type": "integer", "minimum": 0},
+        "tick_s": {"type": "integer", "minimum": 1, "maximum": 3600},
+        "duration_ticks": {"type": "integer", "minimum": 1, "maximum": 10000000}
+      }
+    },
+    "sensors": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ais"],
+      "properties": {
+        "ais": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["sigma_m", "report_prob", "report_interval_ticks", "max_age_ticks"],
+          "properties": {
+            "sigma_m": {"type": "number", "exclusiveMinimum": 0, "maximum": 100000},
+            "report_prob": {"type": "number", "minimum": 0, "maximum": 1},
+            "report_interval_ticks": {"type": "integer", "minimum": 1},
+            "max_age_ticks": {"type": "integer", "minimum": 1}
+          }
+        }
+      }
+    },
+    "entities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["vessels"],
+      "properties": {
+        "vessels": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "name", "class", "mmsi", "x_m", "y_m", "speed_mps", "course_deg", "max_speed_mps", "is_runner", "ais_mode"],
+            "properties": {
+              "id": {"type": "string", "minLength": 1, "maxLength": 64},
+              "name": {"type": "string", "maxLength": 64},
+              "class": {"enum": ["vlcc", "suezmax", "aframax", "product_tanker", "bulk", "container", "fishing", "tug", "cutter"]},
+              "mmsi": {"type": "string", "pattern": "^[0-9]{9}$"},
+              "x_m": {"type": "number"},
+              "y_m": {"type": "number"},
+              "speed_mps": {"type": "number", "minimum": 0, "maximum": 40},
+              "course_deg": {"type": "number", "minimum": 0, "exclusiveMaximum": 360},
+              "max_speed_mps": {"type": "number", "exclusiveMinimum": 0, "maximum": 40},
+              "is_runner": {"type": "boolean"},
+              "ais_mode": {"enum": ["on", "dark", "spoof"]},
+              "secret_note": {"type": "string", "maxLength": 256, "description": "Truth-only field; must never appear in any observation."}
+            }
+          }
+        }
+      }
+    },
+    "content_hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

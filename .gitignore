@@ -20,3 +20,9 @@ Saved/
 .tools/
 data-cache/
 *.tmp
+build/
+out/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
