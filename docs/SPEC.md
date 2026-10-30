@@ -3,7 +3,8 @@
 **Created:** 2026-10-29
 **Status:** Draft v1 - design only; nothing implemented or verified
 **Platform dependency:** [hyperreal-platform](https://github.com/PCSchmidt/hyperreal-platform) (HRCore, HRScenario, HRReplay, HRGeo, HRAtmosphere, HROcean, HRSensors, HRNet, HRRating, HRAgents)
-**Companion:** [SPIKES.md](./SPIKES.md)
+**Companion documents:** [REQUIREMENTS.md](./REQUIREMENTS.md) (user stories, FR IDs, session walkthrough) | [AGENTS.md](./AGENTS.md) (agent layer, DarkFleet-Bench, injection security) | [ML.md](./ML.md) (learned components) | [SPIKES.md](./SPIKES.md) | [PRIOR_ART.md](./PRIOR_ART.md)
+**Build order:** first title of the collection; delivered **headless-first** (simulation, bots, agents and benchmark before any Unreal work).
 
 > `[VERIFY]` marks assumptions not yet checked. All vessels, companies, people and incidents are **fictional**; geography is real.
 
@@ -165,6 +166,8 @@ Map layer is light; 3D views are on-demand renders at moderate resolution. Targe
 
 ## 8. AI and ML (a major showcase)
 
+> Detailed specifications: classical and learned models in [ML.md](./ML.md); LLM agents, DarkFleet-Bench and injection security in [AGENTS.md](./AGENTS.md). The summary below is superseded where they differ.
+
 | Component | Approach |
 |---|---|
 | **Runner bot** | POMDP-informed planner plus learned policy (RL via self-play against Hunter bot): route choice, AIS manipulation timing, STS site selection |
@@ -190,29 +193,46 @@ The Hunter-bot tracking problem and Runner-bot deception problem are genuine res
 
 ## 10. Technical architecture
 
+### 10.1 Layering (headless-first; see platform ADR 0001 and 0004)
 ```
-DarkFleet (game module)
- ├─ DFWorld         world state, vessels, ports, time, scenario loading
- ├─ DFTraffic       statistical traffic generator, schedules, port calls
- ├─ DFVessel        kinematics, fuel, AIS controls, STS state machine
- ├─ DFAIS           transmission/reception models, coverage, anomaly features
- ├─ DFSensors       sensor definitions on HRSensors; orbit propagation; tasking
- ├─ DFEvidence      traces, case building, identification claims, scoring
- ├─ DFRoles         fog-of-war filters, per-role views, action validation
- ├─ DFAI            Runner/Hunter bots, trackers, anomaly models
- ├─ DFViews         EO/SAR/turret/bridge scene builders and sensor post-process
- └─ DFUI            map, dossiers, evidence board, planner
+ Presentation (later)   2D tactical map (first)  ->  Unreal sensor views (EO/SAR/turret)
+ -------------------------------------------------------------------------------
+ Agent layer            HRAgentKit: tool schemas, MCP server, harness, trace, bench
+ -------------------------------------------------------------------------------
+ Role-filtered API      ObservationV1 / ActionV1 (the only way anything reads or acts)
+ -------------------------------------------------------------------------------
+ dark-fleet-core (C++20, no engine dependency, Python bindings)
+   DFWorld  DFTraffic  DFVessel  DFAIS  DFSensors  DFEvidence  DFRoles  DFRules
+ -------------------------------------------------------------------------------
+ hr-core (platform): HRCore, HRScenario, HRReplay, HRGeo, HRSensors, HRRating
 ```
-**Strict separation:** `DFWorld` (truth) → `DFRoles` (filtered knowledge) → UI. UI code has no access to truth objects. Tested via an automated "information leak" suite.
 
-**Language split:** C++ core; Python tooling for traffic fitting, orbit precomputation, ML training; headless sim for tournaments.
+| Module | Responsibility |
+|---|---|
+| DFWorld | Truth state, entities, time, scenario loading |
+| DFTraffic | Statistical traffic generator, schedules, port calls |
+| DFVessel | Kinematics, fuel, AIS controls, STS state machine |
+| DFAIS | Transmission and reception models, coverage, anomaly features |
+| DFSensors | Sensor definitions on HRSensors; orbit propagation; tasking |
+| DFEvidence | Traces, case building, identification claims, scoring |
+| DFRoles | Fog-of-war filters, per-role views, action validation |
+| DFRules | Win conditions, penalties, debrief generation |
+| DFPy | Python bindings, Gymnasium environments, headless runner |
+| DFAgents | Classical bots/trackers, learned policy loading (ONNX), agent adapters |
+| DFBench | DarkFleet-Bench runner and reporting |
+| DFMap (UI) | 2D tactical map and evidence board (first front end) |
+| DFViews (UE) | EO/SAR/turret/bridge scene builders (later) |
 
----
+**Strict separation:** `DFWorld` (truth) -> `DFRoles` (filtered knowledge) -> UI/agents. UI and agent code have no access to truth objects, enforced by module boundaries and the automated information-leak suite (FR-023).
+
+**Front-end choice (first):** a lightweight 2D map client (decision pending among a native C++ immediate-mode UI, a Python desktop UI, or a local web UI served by the Python layer) `[DECIDE at D1; criteria: iteration speed, map rendering, accessibility, ease of recording demos]`. Unreal is introduced at D6 for sensor views only.
+
+**Language split:** C++ core; Python for tooling, ML training, agents, benchmark; headless sim for tournaments and CI.
 
 ## 11. Content, data and policy
 - **Fictionalization:** invented ship names, owners, ports of registry are fictional; avoid real company names; avoid implying a real flag state is complicit. Real chokepoints and ports appear as geography.
 - **Sensitive-topic handling:** present as a game of detection and deception, include a brief in-game note that scenarios are fictional; no operational guidance for real evasion (abstract mechanics only; no real vessel identifiers; no actual spoofing techniques beyond generic concepts).
-- **Defense boundary:** use public references only; no classified or employer-derived sensor performance values - parameters are invented to be plausible and tunable.
+- **Public-source boundary:** use public references only. Sensor performance values are invented design parameters, labelled as tunable, and are not derived from non-public sources.
 - **Licensing:** manifest as per platform; attribution for OSM/Natural Earth/GEBCO/NOAA.
 
 ---
@@ -243,33 +263,34 @@ See [SPIKES.md](./SPIKES.md). Summary:
 | Orbit/scheduling complexity | Medium | Medium | Fictional constellation, simple tasking first |
 | SAR and EO realism effort | Medium | Medium | Stylized-but-physically-motivated shaders; spikes |
 | Data licensing for traffic | Medium | Medium | Statistical models only; no redistribution |
-| Defense-adjacent perception | Low-Medium | High | Public/fictional parameters; boundary documented |
 | Async play depends on opponents | High | Low | Bots as default opponents |
 | Scope (many systems) | High | High | Vertical slice: one region, one Runner vs one Hunter, 4 sensor types |
 
 ---
 
-## 14. Milestones (gated)
+## 14. Milestones (gated, effort-agnostic)
 
 | Gate | Deliverable | Exit evidence |
 |---|---|---|
-| D0 | Spikes S1-S4 | Information-secure role filters; AIS model; orbit passes; traffic generator |
-| D1 | Tabletop vertical slice (2D map only) | One region, Runner vs Hunter bot, async turns, evidence/scoring |
-| D2 | Sensor views | EO chip and SAR image for contacts; turret view |
-| D3 | Bot tournaments | Balance report; Hunter tracker metrics |
-| D4 | Daily Trace | Seeded identification puzzle; leaderboard |
-| D5 | Task Force multiplayer | 1v2-3 live/async; role tests |
-| D6 | Campaign and regions | Additional regions, narrative wrapper |
-
----
+| D0 | Platform G0-G2 done; `dark-fleet-core` skeleton; scenario/action/observation schemas; leak-test harness (Spike S1) | CI green; schemas validated; leak suite runs |
+| D1 | **Headless vertical slice:** one region, traffic, AIS model, 2 sensor types, evidence and scoring, scripted Runner and baseline Hunter tracker, replay verification | Deterministic replays; tracker beats dead reckoning; US-3 passes |
+| D2 | **2D tactical map client:** US-1 and US-2 playable vs bots | Owner playtest recorded honestly |
+| D3 | **Agent layer:** HRAgentKit, MCP server, Case Officer + specialists, citation checker, trace panel | US-4 passes; citation checker spike (S14) |
+| D4 | **DarkFleet-Bench v1 + injection suite:** baselines, agent results with CIs, write-up | Published results, including negative ones; reproducible with one command |
+| D5 | **ML expansion:** anomaly detector, learned Runner via self-play, claim calibrator, model cards | ML.md release checklist satisfied per model |
+| D6 | **Unreal sensor views:** EO chip, SAR image, turret view (platform gate G2U) | FR-073 and Spike S5 |
+| D7 | Daily Trace and verified async leaderboard | Tampered replay rejected |
+| D8 | Task Force multiplayer and campaign (optional) | Role tests, desync tests |
 
 ## 15. Open decisions
 
 | Decision | Default | Resolve by |
 |---|---|---|
 | First region | Gulf of Oman / Strait of Hormuz approaches (high traffic, compact) | D0 |
-| Basemap approach | Cesium (non-commercial) vs offline custom map | D1 |
+| Basemap approach | Offline custom vector map from OSM/Natural Earth for the 2D client; Cesium only if needed for the Unreal views | D2 |
 | Real-time vs turn-based default | Async turns + optional compression | D1 |
+| Agent model defaults | Local open-weight model; hosted optional for comparison | D3 |
+| 2D client technology | See 10.1 | D1 |
 | Reuse of Regional Analysis Desk evidence model | Concept reuse only | D1 |
 | Hunter team roles | Satellite desk / air ops / surface | D5 |
 | Thematic framing (sanctions vs smuggling vs piracy) | Neutral "dark fleet" with fictional actors | D0 |
