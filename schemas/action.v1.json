@@ -1,37 +1,182 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/PCSchmidt/dark-fleet/schemas/action.v1.json",
-  "title": "Dark Fleet action v1",
+  "title": "Dark Fleet action v1.1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "role", "tick", "action_type", "params"],
+  "required": [
+    "schema_version",
+    "role",
+    "tick",
+    "action_type",
+    "params"
+  ],
   "properties": {
-    "schema_version": {"type": "string", "pattern": "^1\\.[0-9]+\\.[0-9]+$"},
-    "role": {"enum": ["hunter", "runner"]},
-    "tick": {"type": "integer", "minimum": 0},
-    "action_type": {"enum": ["noop", "set_ais_mode", "set_course_speed", "task_sensor"]},
-    "params": {"type": "object"}
+    "schema_version": {
+      "type": "string",
+      "pattern": "^1\\.[0-9]+\\.[0-9]+$"
+    },
+    "role": {
+      "enum": [
+        "hunter",
+        "runner"
+      ]
+    },
+    "tick": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "action_type": {
+      "enum": [
+        "noop",
+        "set_ais_mode",
+        "set_course_speed",
+        "task_sensor",
+        "file_claim"
+      ]
+    },
+    "params": {
+      "type": "object"
+    }
   },
   "allOf": [
-    {"if": {"properties": {"action_type": {"const": "set_ais_mode"}}},
-     "then": {"properties": {"params": {
-       "type": "object", "additionalProperties": false, "required": ["mode"],
-       "properties": {
-         "mode": {"enum": ["on", "dark", "spoof"]},
-         "offset_x_m": {"type": "number"},
-         "offset_y_m": {"type": "number"}}}}}},
-    {"if": {"properties": {"action_type": {"const": "set_course_speed"}}},
-     "then": {"properties": {"params": {
-       "type": "object", "additionalProperties": false, "required": ["course_deg", "speed_mps"],
-       "properties": {
-         "course_deg": {"type": "number", "minimum": 0, "exclusiveMaximum": 360},
-         "speed_mps": {"type": "number", "minimum": 0}}}}}},
-    {"if": {"properties": {"action_type": {"const": "task_sensor"}}},
-     "then": {"properties": {"params": {
-       "type": "object", "additionalProperties": false, "required": ["sensor", "x_m", "y_m"],
-       "properties": {
-         "sensor": {"enum": ["eo", "sar"]},
-         "x_m": {"type": "number"},
-         "y_m": {"type": "number"}}}}}}
+    {
+      "if": {
+        "properties": {
+          "action_type": {
+            "const": "set_ais_mode"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "params": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "mode"
+            ],
+            "properties": {
+              "mode": {
+                "enum": [
+                  "on",
+                  "dark",
+                  "spoof"
+                ]
+              },
+              "offset_x_m": {
+                "type": "number"
+              },
+              "offset_y_m": {
+                "type": "number"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "action_type": {
+            "const": "set_course_speed"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "params": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "course_deg",
+              "speed_mps"
+            ],
+            "properties": {
+              "course_deg": {
+                "type": "number",
+                "minimum": 0,
+                "exclusiveMaximum": 360
+              },
+              "speed_mps": {
+                "type": "number",
+                "minimum": 0
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "action_type": {
+            "const": "task_sensor"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "params": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "sensor",
+              "x_m",
+              "y_m"
+            ],
+            "properties": {
+              "sensor": {
+                "enum": [
+                  "eo",
+                  "sar"
+                ]
+              },
+              "x_m": {
+                "type": "number"
+              },
+              "y_m": {
+                "type": "number"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "action_type": {
+            "const": "file_claim"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "params": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "contact_id",
+              "evidence"
+            ],
+            "properties": {
+              "contact_id": {
+                "type": "string",
+                "pattern": "^c-[0-9a-f]{8}$"
+              },
+              "evidence": {
+                "type": "array",
+                "maxItems": 32,
+                "items": {
+                  "type": "string",
+                  "pattern": "^c-[0-9a-f]{8}$"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
   ]
 }

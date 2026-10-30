@@ -1,10 +1,10 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/PCSchmidt/dark-fleet/schemas/observation.v1.json",
-  "title": "Dark Fleet observation v1 (role-filtered view)",
+  "title": "Dark Fleet observation v1.1 (role-filtered view)",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "role", "tick", "utc_ms", "contacts", "events"],
+  "required": ["schema_version", "role", "tick", "utc_ms", "contacts", "events", "status"],
   "properties": {
     "schema_version": {"type": "string", "pattern": "^1\\.[0-9]+\\.[0-9]+$"},
     "role": {"enum": ["hunter", "runner"]},
@@ -14,18 +14,25 @@
       "type": "array",
       "items": {
         "type": "object",
-        "additionalProperties": false,
-        "required": ["contact_id", "source", "claimed_mmsi", "claimed_name", "x_m", "y_m", "sigma_m", "age_ticks"],
+        "required": ["contact_id", "source", "x_m", "y_m", "sigma_m", "age_ticks"],
         "properties": {
           "contact_id": {"type": "string", "pattern": "^c-[0-9a-f]{8}$"},
-          "source": {"enum": ["ais"]},
+          "source": {"enum": ["ais", "sar"]},
           "claimed_mmsi": {"type": "string", "pattern": "^[0-9]{9}$"},
           "claimed_name": {"type": "string", "maxLength": 64},
+          "size_class": {"enum": ["large", "medium", "small"]},
           "x_m": {"type": "number"},
           "y_m": {"type": "number"},
           "sigma_m": {"type": "number", "exclusiveMinimum": 0},
           "age_ticks": {"type": "integer", "minimum": 0}
-        }
+        },
+        "allOf": [
+          {"if": {"properties": {"source": {"const": "ais"}}},
+           "then": {"required": ["claimed_mmsi", "claimed_name"], "not": {"required": ["size_class"]}}},
+          {"if": {"properties": {"source": {"const": "sar"}}},
+           "then": {"required": ["size_class"], "not": {"anyOf": [{"required": ["claimed_mmsi"]}, {"required": ["claimed_name"]}]}}}
+        ],
+        "additionalProperties": false
       }
     },
     "events": {
@@ -36,9 +43,18 @@
         "required": ["tick", "kind"],
         "properties": {
           "tick": {"type": "integer", "minimum": 0},
-          "kind": {"enum": ["scenario_start", "action_rejected"]},
+          "kind": {"enum": ["scenario_start", "action_rejected", "claim_filed", "episode_end"]},
           "code": {"type": "string"}
         }
+      }
+    },
+    "status": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "outcome"],
+      "properties": {
+        "state": {"enum": ["running", "runner_delivered", "claim_resolved", "timeout"]},
+        "outcome": {"enum": ["none", "runner_delivered", "correct_supported", "insufficient_support", "wrong_identity", "timeout"]}
       }
     },
     "own": {
@@ -53,10 +69,52 @@
         "course_deg": {"type": "number"},
         "ais_mode": {"enum": ["on", "dark", "spoof"]}
       }
+    },
+    "mission": {
+      "description": "Runner only: the delivery objective, which the Hunter must never see.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["delivery"],
+      "properties": {
+        "delivery": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["x_m", "y_m", "radius_m"],
+          "properties": {"x_m": {"type": "number"}, "y_m": {"type": "number"}, "radius_m": {"type": "number"}}
+        }
+      }
+    },
+    "brief": {
+      "description": "Hunter only: the target of interest as publicly known.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target_mmsi", "target_class"],
+      "properties": {"target_mmsi": {"type": "string", "pattern": "^[0-9]{9}$"}, "target_class": {"type": "string"}}
+    },
+    "resources": {
+      "description": "Hunter only: own assets and pending orders.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sar_tasks_remaining", "sar_footprint_radius_m", "pending_taskings"],
+      "properties": {
+        "sar_tasks_remaining": {"type": "integer", "minimum": 0},
+        "sar_footprint_radius_m": {"type": "number"},
+        "pending_taskings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["exec_tick", "x_m", "y_m"],
+            "properties": {"exec_tick": {"type": "integer"}, "x_m": {"type": "number"}, "y_m": {"type": "number"}}
+          }
+        }
+      }
     }
   },
   "allOf": [
-    {"if": {"properties": {"role": {"const": "hunter"}}}, "then": {"not": {"required": ["own"]}}},
-    {"if": {"properties": {"role": {"const": "runner"}}}, "then": {"required": ["own"]}}
+    {"if": {"properties": {"role": {"const": "hunter"}}},
+     "then": {"required": ["resources"], "not": {"anyOf": [{"required": ["own"]}, {"required": ["mission"]}]}}},
+    {"if": {"properties": {"role": {"const": "runner"}}},
+     "then": {"required": ["own"], "not": {"anyOf": [{"required": ["brief"]}, {"required": ["resources"]}]}}}
   ]
 }

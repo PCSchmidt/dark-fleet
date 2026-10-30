@@ -19,6 +19,7 @@ def _find_module_dir():
     return None
 
 
+sys.path.insert(0, os.path.join(ROOT, "python"))
 _dir = _find_module_dir()
 if _dir:
     sys.path.insert(0, _dir)

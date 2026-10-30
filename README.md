@@ -2,11 +2,13 @@
 
 An asymmetric hidden-information cat-and-mouse game on a photoreal ocean: a fictional covert tanker versus analysts, aircraft, cutters and satellites. Real geography; entirely fictional vessels, companies and incidents.
 
-**Status:** D0 complete: engine-independent C++ core skeleton, JSON schemas, Python bindings and a passing information-leak fuzz harness (see [docs/D0_EVIDENCE.md](docs/D0_EVIDENCE.md)). It is a skeleton, not a playable game. The rest of the design is unimplemented.
+**Status:** D0 and D1 complete (headless): engine-independent C++ core with traffic generator, AIS and SAR sensors, claims and scoring, verified replays, role-filter leak harness, plus Python trackers/bots and an evaluation harness. See [docs/D0_EVIDENCE.md](docs/D0_EVIDENCE.md) and [docs/D1_EVIDENCE.md](docs/D1_EVIDENCE.md). It is not yet a playable game (no UI) and is not balanced.
 
 | Document | Purpose |
 |---|---|
+| [docs/D1_EVIDENCE.md](docs/D1_EVIDENCE.md) | D1 verification evidence, tracker study and limits |
 | [docs/D0_EVIDENCE.md](docs/D0_EVIDENCE.md) | D0 verification evidence and limits |
+| [docs/TRACEABILITY.md](docs/TRACEABILITY.md) | Requirement to evidence map |
 | [docs/SPEC.md](docs/SPEC.md) | Architecture and scoping specification |
 | [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) | User stories, requirement IDs, session walkthrough |
 | [docs/AGENTS.md](docs/AGENTS.md) | LLM agent layer, DarkFleet-Bench, prompt-injection security |

@@ -14,6 +14,7 @@
 #include <set>
 #include <sstream>
 
+#include "df/traffic.hpp"
 #include "df/world.hpp"
 #include "hr/rng.hpp"
 #include "test_support.hpp"
@@ -25,6 +26,13 @@ struct TruthLedger {
   std::set<double> secret_numbers;
 
   void record(const df::World& w) {
+    if (w.scenario().contains("mission")) {
+      const auto& d = w.scenario()["mission"]["delivery"];
+      for (const char* k : {"x_m", "y_m"}) {
+        const double x = d[k].get<double>();
+        if (x != static_cast<double>(static_cast<long long>(x))) secret_numbers.insert(x);
+      }
+    }
     for (const auto& v : w.truth_vessels()) {
       secret_strings.insert(v.id);
       if (!v.secret_note.empty()) secret_strings.insert(v.secret_note);
@@ -67,11 +75,13 @@ std::vector<std::string> audit(const df::json& obs, const TruthLedger& ledger, d
   if (role == df::Role::Runner && obs.contains("own")) {
     df::json copy = obs;
     copy.erase("own");
+    copy.erase("mission");
     scan(copy, ledger, findings, "");
-    // strings/keys inside "own" still checked
+    // strings/keys inside the runner's private blocks are still checked
     TruthLedger strings_only;
     strings_only.secret_strings = ledger.secret_strings;
     scan(obs.at("own"), strings_only, findings, "/own");
+    if (obs.contains("mission")) scan(obs.at("mission"), strings_only, findings, "/mission");
   } else {
     scan(obs, ledger, findings, "");
   }
@@ -110,18 +120,19 @@ df::json random_scenario(hr::Rng& rng, std::uint64_t seed) {
 
 df::json random_action_doc(hr::Rng& rng, std::uint64_t tick) {
   const char* roles[] = {"hunter", "runner", "admiral"};
-  const char* types[] = {"noop", "set_ais_mode", "set_course_speed", "task_sensor", "teleport"};
+  const char* types[] = {"noop", "set_ais_mode", "set_course_speed", "task_sensor", "file_claim", "teleport"};
   const char* modes[] = {"on", "dark", "spoof", "bogus"};
   df::json a;
   a["schema_version"] = "1.0.0";
   a["role"] = roles[rng.below(3)];
   a["tick"] = rng.below(5) == 0 ? tick + 1 : tick;
-  a["action_type"] = types[rng.below(5)];
+  a["action_type"] = types[rng.below(6)];
   df::json p = df::json::object();
-  switch (rng.below(4)) {
+  switch (rng.below(5)) {
     case 0: p["mode"] = modes[rng.below(4)]; p["offset_x_m"] = (rng.uniform01() - 0.5) * 1e5; p["offset_y_m"] = (rng.uniform01() - 0.5) * 1e5; break;
     case 1: p["course_deg"] = rng.uniform01() * 400.0; p["speed_mps"] = rng.uniform01() * 12.0; break;
     case 2: p["sensor"] = rng.below(2) ? "eo" : "sar"; p["x_m"] = rng.uniform01() * 1000; p["y_m"] = rng.uniform01() * 1000; break;
+    case 3: p["contact_id"] = "c-00000000"; p["evidence"] = df::json::array({"c-00000000"}); break;
     default: break;
   }
   a["params"] = p;
@@ -164,6 +175,56 @@ TEST_CASE("Leak fuzz: no truth-only data reaches any role's observation (2000 se
   CHECK(observations == 2000u * 25u * 2u);
   CHECK(actions_ok > 1000);
   CHECK(actions_rejected > 1000);
+}
+
+
+TEST_CASE("Leak fuzz on generated scenarios with SAR tasking and claims (1000 seeds)") {
+  std::size_t observations = 0, claims = 0;
+  for (std::uint64_t seed = 1; seed <= 1000; ++seed) {
+    hr::Rng rng(seed, 200);
+    df::GenParams gp;
+    gp.seed = seed;
+    gp.n_background = 8 + static_cast<int>(rng.below(12));
+    df::World w;
+    REQUIRE(df::World::from_scenario(df::generate_scenario(gp), w).ok());
+    TruthLedger ledger;
+    ledger.record(w);
+    for (int t = 0; t < 40 && w.state() == df::EpisodeState::Running; ++t) {
+      if (rng.below(6) == 0) {
+        const auto& r = w.truth_vessels()[0];
+        (void)w.submit_action_json({{"schema_version", "1.1.0"}, {"role", "hunter"}, {"tick", w.tick()}, {"action_type", "task_sensor"},
+                                    {"params", {{"sensor", "sar"}, {"x_m", r.x_m + (rng.uniform01() - 0.5) * 30000}, {"y_m", r.y_m + 123.456 + (rng.uniform01() - 0.5) * 30000}}}});
+      }
+      if (rng.below(8) == 0) {
+        (void)w.submit_action_json({{"schema_version", "1.1.0"}, {"role", "runner"}, {"tick", w.tick()}, {"action_type", "set_ais_mode"},
+                                    {"params", {{"mode", rng.below(2) ? "dark" : "on"}}}});
+      }
+      if (rng.below(10) == 0) {
+        const auto cs = w.observe(df::Role::Hunter)["contacts"];
+        if (!cs.empty()) {
+          const std::string id = cs[rng.below(cs.size())]["contact_id"];
+          (void)w.submit_action_json({{"schema_version", "1.1.0"}, {"role", "hunter"}, {"tick", w.tick()}, {"action_type", "file_claim"},
+                                      {"params", {{"contact_id", id}, {"evidence", df::json::array({id})}}}});
+          ++claims;
+        }
+      }
+      (void)w.submit_action_json(random_action_doc(rng, w.tick()));
+      w.step();
+      ledger.record(w);
+      for (df::Role role : {df::Role::Hunter, df::Role::Runner}) {
+        const auto obs = w.observe(role);
+        const auto findings = audit(obs, ledger, role);
+        ++observations;
+        if (!findings.empty()) FAIL("leak at generated seed " << seed << " tick " << t << ": " << findings.front());
+        if (role == df::Role::Hunter) {
+          CHECK_FALSE(obs.contains("mission"));
+          CHECK_FALSE(obs.contains("own"));
+        }
+      }
+    }
+  }
+  CHECK(observations > 20000);
+  CHECK(claims > 100);
 }
 
 TEST_CASE("Mutation test: the harness detects a deliberately leaky observer") {

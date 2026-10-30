@@ -1,0 +1,9 @@
+[project]
+name = "darkfleet"
+version = "0.2.0"
+description = "Dark Fleet trackers, scripted policies and evaluation harness"
+requires-python = ">=3.10"
+dependencies = ["numpy>=1.26"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

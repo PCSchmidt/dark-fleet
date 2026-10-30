@@ -1,6 +1,8 @@
 add_library(df_core
   src/world.cpp
-  src/observe.cpp)
+  src/observe.cpp
+  src/replay.cpp
+  src/traffic.cpp)
 add_library(df::core ALIAS df_core)
 target_include_directories(df_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_link_libraries(df_core PUBLIC hr::core nlohmann_json::nlohmann_json)
@@ -15,7 +17,9 @@ if(DF_BUILD_TESTS)
     tests/test_main.cpp
     tests/test_world.cpp
     tests/test_actions.cpp
-    tests/test_leak.cpp)
+    tests/test_leak.cpp
+    tests/test_d1.cpp
+    tests/test_replay.cpp)
   target_link_libraries(df_core_tests PRIVATE df::core doctest::doctest)
   target_compile_definitions(df_core_tests PRIVATE
     DF_EXAMPLE_SCENARIO="${CMAKE_SOURCE_DIR}/schemas/examples/scenario_basic.json")
