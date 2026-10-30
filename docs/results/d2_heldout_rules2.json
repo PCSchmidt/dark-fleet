@@ -1,0 +1,176 @@
+{
+  "seeds": "heldout",
+  "seed_list": [
+    1000,
+    1059
+  ],
+  "brief": "profile",
+  "rows": [
+    {
+      "runner": "dark_run",
+      "audit": false,
+      "require_dark_ticks": 0,
+      "n": 60,
+      "outcomes": {
+        "correct_supported": 49,
+        "runner_delivered": 7,
+        "insufficient_support": 1,
+        "unfounded_claim": 1,
+        "wrong_identity": 2
+      },
+      "audit_results": {
+        "not_run": 60
+      },
+      "lock_correct": 54,
+      "replays_verified": 60,
+      "mean_hunter_score": 98.79
+    },
+    {
+      "runner": "dark_run",
+      "audit": true,
+      "require_dark_ticks": 0,
+      "n": 60,
+      "outcomes": {
+        "correct_supported": 47,
+        "insufficient_support": 2,
+        "wrong_identity": 4,
+        "runner_delivered": 5,
+        "unfounded_claim": 2
+      },
+      "audit_results": {
+        "consistent": 56,
+        "inconclusive": 4
+      },
+      "lock_correct": 54,
+      "replays_verified": 60,
+      "mean_hunter_score": 94.05
+    },
+    {
+      "runner": "dark_run",
+      "audit": true,
+      "require_dark_ticks": 6,
+      "n": 60,
+      "outcomes": {
+        "correct_supported": 48,
+        "insufficient_support": 2,
+        "runner_delivered": 6,
+        "wrong_identity": 3,
+        "unfounded_claim": 1
+      },
+      "audit_results": {
+        "consistent": 56,
+        "inconclusive": 4
+      },
+      "lock_correct": 54,
+      "replays_verified": 60,
+      "mean_hunter_score": 97.23
+    },
+    {
+      "runner": "honest",
+      "audit": false,
+      "require_dark_ticks": 0,
+      "n": 60,
+      "outcomes": {
+        "runner_delivered": 58,
+        "unfounded_claim": 2
+      },
+      "audit_results": {
+        "not_run": 60
+      },
+      "lock_correct": 54,
+      "replays_verified": 60,
+      "mean_hunter_score": -0.83
+    },
+    {
+      "runner": "honest",
+      "audit": true,
+      "require_dark_ticks": 0,
+      "n": 60,
+      "outcomes": {
+        "insufficient_support": 2,
+        "runner_delivered": 49,
+        "unfounded_claim": 8,
+        "wrong_identity": 1
+      },
+      "audit_results": {
+        "consistent": 56,
+        "inconclusive": 4
+      },
+      "lock_correct": 54,
+      "replays_verified": 60,
+      "mean_hunter_score": -3.33
+    },
+    {
+      "runner": "honest",
+      "audit": true,
+      "require_dark_ticks": 6,
+      "n": 60,
+      "outcomes": {
+        "runner_delivered": 59,
+        "unfounded_claim": 1
+      },
+      "audit_results": {
+        "consistent": 56,
+        "inconclusive": 4
+      },
+      "lock_correct": 54,
+      "replays_verified": 60,
+      "mean_hunter_score": -0.42
+    },
+    {
+      "runner": "spoof",
+      "audit": false,
+      "require_dark_ticks": 0,
+      "n": 60,
+      "outcomes": {
+        "runner_delivered": 58,
+        "correct_supported": 2
+      },
+      "audit_results": {
+        "not_run": 60
+      },
+      "lock_correct": 53,
+      "replays_verified": 60,
+      "mean_hunter_score": 4.02
+    },
+    {
+      "runner": "spoof",
+      "audit": true,
+      "require_dark_ticks": 0,
+      "n": 60,
+      "outcomes": {
+        "correct_supported": 48,
+        "runner_delivered": 8,
+        "wrong_identity": 4
+      },
+      "audit_results": {
+        "spoof_suspected": 50,
+        "inconclusive": 6,
+        "consistent": 4
+      },
+      "lock_correct": 53,
+      "replays_verified": 60,
+      "mean_hunter_score": 97.27
+    },
+    {
+      "runner": "spoof",
+      "audit": true,
+      "require_dark_ticks": 6,
+      "n": 60,
+      "outcomes": {
+        "correct_supported": 48,
+        "runner_delivered": 9,
+        "wrong_identity": 3
+      },
+      "audit_results": {
+        "spoof_suspected": 50,
+        "inconclusive": 6,
+        "consistent": 4
+      },
+      "lock_correct": 53,
+      "replays_verified": 60,
+      "mean_hunter_score": 98.11
+    }
+  ],
+  "all_replays_verified": true
+}

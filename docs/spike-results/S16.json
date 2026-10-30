@@ -1,0 +1,23 @@
+{
+  "runs": 150,
+  "verified_ok": 150,
+  "mismatches": [],
+  "tool_calls_per_run": 340.4066666666667,
+  "outcomes_by_runner": {
+    "dark_run": {
+      "wrong_identity": 4,
+      "correct_supported": 39,
+      "runner_delivered": 6,
+      "insufficient_support": 1
+    },
+    "honest": {
+      "runner_delivered": 49,
+      "wrong_identity": 1
+    },
+    "spoof": {
+      "correct_supported": 39,
+      "runner_delivered": 11
+    }
+  },
+  "note": "Replays are re-simulated from recorded inputs only; the agent trace is not used. Scaled down from the S16 target of 1,000 runs."
+}

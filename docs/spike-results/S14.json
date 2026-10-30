@@ -1,0 +1,85 @@
+{
+  "n": 500,
+  "n_bad": 284,
+  "n_good": 216,
+  "recall_bad": 1.0,
+  "precision_flagged": 1.0,
+  "false_block_rate_on_good": 0.0,
+  "per_kind": {
+    "assertion_not_cited": {
+      "n": 35,
+      "flagged": 35,
+      "rate": 1.0
+    },
+    "chain_bad": {
+      "n": 36,
+      "flagged": 36,
+      "rate": 1.0
+    },
+    "chain_ok": {
+      "n": 36,
+      "flagged": 0,
+      "rate": 0.0
+    },
+    "colocated_ok": {
+      "n": 36,
+      "flagged": 0,
+      "rate": 0.0
+    },
+    "fabricated_id": {
+      "n": 35,
+      "flagged": 35,
+      "rate": 1.0
+    },
+    "identity_bad": {
+      "n": 36,
+      "flagged": 36,
+      "rate": 1.0
+    },
+    "identity_ok": {
+      "n": 36,
+      "flagged": 0,
+      "rate": 0.0
+    },
+    "out_of_role_id": {
+      "n": 35,
+      "flagged": 35,
+      "rate": 1.0
+    },
+    "position_bad": {
+      "n": 36,
+      "flagged": 36,
+      "rate": 1.0
+    },
+    "position_ok": {
+      "n": 36,
+      "flagged": 0,
+      "rate": 0.0
+    },
+    "silent_bad": {
+      "n": 36,
+      "flagged": 36,
+      "rate": 1.0
+    },
+    "silent_ok": {
+      "n": 36,
+      "flagged": 0,
+      "rate": 0.0
+    },
+    "size_ok": {
+      "n": 36,
+      "flagged": 0,
+      "rate": 0.0
+    },
+    "uncited": {
+      "n": 35,
+      "flagged": 35,
+      "rate": 1.0
+    }
+  },
+  "episodes": 20,
+  "seeds": [
+    2000,
+    2019
+  ]
+}

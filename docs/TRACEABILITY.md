@@ -21,7 +21,13 @@ Maps requirement IDs from [REQUIREMENTS.md](./REQUIREMENTS.md) to evidence. "Par
 | FR-031 claims cite evidence; distinguishes wrong vs insufficient | Done | `test_d1.cpp` claims test |
 | FR-032 score is a pure function of the replay | Done | `test_replay.cpp`, `python/tests/test_d1.py` |
 | FR-033 debrief truth vs knowledge | Not started | - |
-| FR-040..FR-045 agents | Not started | - |
+| FR-040 agents use only the role-filtered tool surface | Done | `agent/tools.py`; `test_agent.py` (capability, forbidden tools, no truth in outputs) |
+| FR-041 asserted facts carry evidence IDs, validated by a checker | Done for the rule table in `citations.py` | `agent/citations.py`, spike S14 (`docs/spike-results/S14.json`) |
+| FR-042 decisions logged; human-approved actions are the authoritative inputs | Partial | `ToolHost.approve` is the only path to the world; trace is observability (JSONL), stored beside, not inside, the replay |
+| FR-043 token, cost, latency metrics | Partial | `Trace.totals()`; cost is `null` when no priced model is used |
+| FR-044 MCP server | Done (in-process tested) | `agent/mcp_server.py`, `test_agent.py` |
+| FR-045 injection suite | Done (static, tool layer only) | `agent/injection.py`, `docs/spike-results/S17-static.json` |
+| US-4 agent assists the Hunter, visibly | Built; owner playtest pending | Case Officer panel, `test_agent.py::test_game_server_officer_flow_*` |
 | FR-050 baseline tracker + scripted Runner | Done | `python/darkfleet/`, `docs/D1_EVIDENCE.md` |
 | FR-051 learned Runner / anomaly detector | Not started | - |
 | FR-060 contracts followed | Partial | schemas v1.1; replay format per DATA_CONTRACTS (JSON, not binary) |

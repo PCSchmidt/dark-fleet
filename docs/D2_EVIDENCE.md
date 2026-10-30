@@ -1,6 +1,8 @@
 # D2 Evidence - Playable 2D Client
 
 **Gate:** D2 (see [SPEC.md](./SPEC.md) section 14). **Date:** 2026-10-30.
+**Note (added at D3):** the numbers below were produced under rules `df-rules-1`. D3 bumped the rules to `df-rules-2` (a correct claim on a Runner that never went dark or spoofed is now an `unfounded_claim`, not a win). A re-run under the new rules is in [D3_EVIDENCE.md](./D3_EVIDENCE.md); this file is kept unchanged as the record of the first run.
+
 **Status:** Built and machine-verified for the scope below. **The gate's "owner playtest recorded honestly" is not met yet:** nobody has played it, and I (the author, an AI assistant) did not run the client in a browser. The client script passes a Node syntax check and the server API is exercised by tests, but the on-screen behaviour (drawing, clicking, layout) is unverified.
 
 ## What D2 added

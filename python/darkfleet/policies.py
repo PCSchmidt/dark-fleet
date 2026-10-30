@@ -93,6 +93,7 @@ class HunterConfig:
     audit_tick: int = 8
     audit_gate_m: float = 4000.0
     spoof_gate_m: float = 10000.0
+    require_dark_ticks: int = 0      # rules v2: only accuse after the target was silent this long (0 = off, D1/D2 behaviour)
 
 
 class HunterBot:
@@ -114,6 +115,7 @@ class HunterBot:
         self.spoof_contacts: dict[str, tuple[int, float, float]] = {}
         self.pending_execs: set[int] = set()
         self.notes: list[str] = []
+        self.max_silent = 0
 
     # tracker access for evaluation
     def estimate(self) -> tuple[float, float] | None:
@@ -196,10 +198,9 @@ class HunterBot:
         self.notes.append(f"t={t}: no vessel under the AIS position; unexplained large vessel at offset "
                           f"({self.spoof_offset[0]:.0f}, {self.spoof_offset[1]:.0f}) m")
 
-    def _spoof_step(self, obs: dict, res: dict) -> list[dict]:
-        """Follow the vessel at AIS position + estimated offset; claim on a two-pass SAR chain."""
+    def _spoof_collect(self, obs: dict) -> None:
+        """Add SAR detections that sit where AIS position + the estimated offset predicts."""
         t = obs["tick"]
-        out: list[dict] = []
         for e in sorted(self.pending_execs):
             if e <= t and self.spoof_offset is not None:
                 fix = self._target_fix_near(e)
@@ -209,6 +210,12 @@ class HunterBot:
                 for c in self._sar_large_at(obs, e):
                     if math.hypot(c["x_m"] - px, c["y_m"] - py) <= self.cfg.spoof_gate_m:
                         self.spoof_contacts[c["contact_id"]] = (e, c["x_m"], c["y_m"])
+
+    def _spoof_step(self, obs: dict, res: dict) -> list[dict]:
+        """Follow the vessel at AIS position + estimated offset; claim on a two-pass SAR chain."""
+        t = obs["tick"]
+        out: list[dict] = []
+        self._spoof_collect(obs)
         ordered = sorted(self.spoof_contacts.items(), key=lambda kv: kv[1][0])
         if len({v[0] for _, v in ordered}) >= 2:
             ids = [cid for cid, _ in ordered]
@@ -234,6 +241,9 @@ class HunterBot:
         if obs["status"]["state"] != "running" or self.claimed:
             return out
 
+        fix_t = self.dr.last_fix_tick()
+        if fix_t is not None:
+            self.max_silent = max(self.max_silent, t - fix_t)
         res = obs["resources"]
         for p in res["pending_taskings"]:
             self.pending_execs.add(p["exec_tick"])
@@ -254,6 +264,8 @@ class HunterBot:
         est = self.estimate()
 
         chain = self._best_chain(obs, est)
+        if self.cfg.require_dark_ticks and self.max_silent < self.cfg.require_dark_ticks:
+            chain = None  # nothing yet suggests this vessel has done anything wrong
         if chain and len(chain) >= self.cfg.claim_min_chain:
             self.claimed = True
             out.append(action("hunter", t, "file_claim", {"contact_id": chain[-1], "evidence": chain}))

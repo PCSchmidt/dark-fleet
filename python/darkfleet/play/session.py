@@ -16,6 +16,9 @@ import numpy as np
 import darkfleet_core as core
 from darkfleet_core import evaluation as truth
 
+from ..agent.case_officer import CaseOfficer
+from ..agent.llm import default_llm
+from ..agent.tools import ToolError, ToolHost
 from ..episode import make_scenario
 from ..policies import HunterBot, HunterConfig, RunnerPolicy
 
@@ -31,6 +34,8 @@ class Session:
     world: object = field(init=False)
     bot: object = field(init=False)
     analyst: HunterBot | None = field(init=False, default=None)
+    host: ToolHost | None = field(init=False, default=None)
+    officer: CaseOfficer | None = field(init=False, default=None)
     track: list = field(init=False, default_factory=list)   # true Runner track, kept server-side
     rejections: list = field(init=False, default_factory=list)
 
@@ -43,8 +48,11 @@ class Session:
         self.world = core.World(json.dumps(self.scenario))
         if self.role == "hunter":
             self.bot = RunnerPolicy(kind=self.runner_kind, seed=self.seed)
-            # Analyst aid: a tracker fed only with the human's own observations (never acts).
-            self.analyst = HunterBot(HunterConfig(pf_seed=self.seed, n_particles=1500))
+            # Agent desk: tool surface over the human's own observations, plus the Case Officer.
+            # Its tracker doubles as the analyst overlay. Nothing here acts without a human decision.
+            self.host = ToolHost(lambda: self._obs("hunter"), self._submit_hunter, self.scenario["time"]["tick_s"], self.seed)
+            self.officer = CaseOfficer(self.host, default_llm())
+            self.analyst = self.host.analyst
         else:
             self.bot = HunterBot(HunterConfig(pf_seed=self.seed, audit_ais=True))
         self._record_truth()
@@ -57,14 +65,13 @@ class Session:
         t = json.loads(truth.runner_truth(self.world))
         self.track.append([self.world.tick, t["x_m"], t["y_m"]])
 
-    def _feed_analyst(self, obs: dict) -> dict | None:
+    def _submit_hunter(self, action: dict) -> dict:
+        return self.act([action])[0]
+
+    def _analyst_snapshot(self) -> dict | None:
         a = self.analyst
         if a is None:
             return None
-        a._ingest_ais(obs)
-        o = a._resolve_brief(obs)
-        a.dr.update(o)
-        a.pf.update(o)
         est = a.pf.estimate()
         if est is None:
             return {"locked": a.locked_mmsi, "estimate": None, "spread_m": None, "particles": []}
@@ -90,7 +97,8 @@ class Session:
 
     def refresh_aids(self) -> None:
         if self.role == "hunter":
-            self._analyst_cache = self._feed_analyst(self._obs("hunter"))
+            self.host.refresh()
+            self._analyst_cache = self._analyst_snapshot()
 
     def act(self, actions: list[dict]) -> list[dict]:
         """Submit the human's actions. Returns one result per action."""
@@ -124,7 +132,36 @@ class Session:
             d["runner_policy"] = self.runner_kind
         if self.role == "runner":
             d["hunter_notes"] = list(getattr(self.bot, "notes", []))
+        if self.host is not None:
+            d["officer"] = {"decisions": list(self.host.decisions), "totals": self.host.trace.totals()}
         return d
+
+    # -- Case Officer (advisory; the human's decision is the recorded input) ----------------------
+    def officer_recommend(self) -> dict:
+        if self.officer is None:
+            raise ValueError("the Case Officer assists the Hunter only")
+        if self.world.ended:
+            raise ValueError("episode has ended")
+        return self.officer.recommend()
+
+    def officer_decide(self, proposal_id: str, decision: str, edited_params: dict | None = None) -> dict:
+        if self.host is None:
+            raise ValueError("the Case Officer assists the Hunter only")
+        if self.world.ended:
+            raise ValueError("episode has ended")
+        if decision == "reject":
+            self.host.reject(proposal_id)
+            return {"decision": "rejected", "proposal": proposal_id}
+        if decision not in ("approve", "edit"):
+            raise ValueError("decision must be approve, edit or reject")
+        if decision == "edit" and not edited_params:
+            raise ValueError("edit needs edited_params")
+        res = self.host.approve(proposal_id, edited_params if decision == "edit" else None)
+        self.refresh_aids()
+        return {"decision": "edited" if decision == "edit" else "approved", "proposal": proposal_id, "engine": res}
+
+    def agent_trace(self) -> str:
+        return self.host.trace.to_jsonl() if self.host is not None else ""
 
     def replay_text(self) -> str:
         if not self.world.ended:

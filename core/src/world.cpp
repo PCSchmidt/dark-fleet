@@ -143,6 +143,7 @@ Status World::from_scenario(const json& s, World& out) {
         return err(hr::ErrorCode::Schema, "mmsi");
       if (x.speed_mps < 0 || x.speed_mps > x.max_speed_mps || x.course_deg < 0 || x.course_deg >= 360)
         return err(hr::ErrorCode::Schema, "vessel kinematics");
+      if (x.is_runner && x.ais_mode != AisMode::On) w.runner_violated_ = true;
       get(v, "secret_note", x.secret_note);
       if (v.contains("waypoints")) {
         for (const json& p : v.at("waypoints")) {
@@ -325,6 +326,7 @@ Status World::apply_action(const Action& a) {
         return reject(hr::ErrorCode::RuleViolation, "spoof offset out of range");
     }
     runner->ais_mode = m;
+    if (m != AisMode::On) runner_violated_ = true;
     runner->spoof_dx_m = dx;
     runner->spoof_dy_m = dy;
   } else if (a.type == "set_course_speed") {
@@ -386,6 +388,9 @@ Status World::apply_action(const Action& a) {
     const double remaining = duration_ticks_ > clock_.tick() ? static_cast<double>(duration_ticks_ - clock_.tick()) : 0.0;
     if (!is_runner) {
       o = {"wrong_identity", -50.0, 50.0};
+    } else if (supporting >= 2 && !runner_violated_) {
+      // Rules v2: identifying the right vessel is not enough if it has done nothing wrong.
+      o = {"unfounded_claim", -25.0, 25.0};
     } else if (supporting >= 2) {
       o = {"correct_supported", 100.0 + 0.2 * remaining, 0.0};
     } else {

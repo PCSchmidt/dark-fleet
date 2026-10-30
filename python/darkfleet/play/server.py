@@ -9,6 +9,9 @@ Single local player, bound to 127.0.0.1. Endpoints:
     POST /api/act          {"actions": [ActionV1-ish dicts without role/tick]}
     POST /api/step         {"n": 1}
     GET  /api/replay       the verified replay (only after the episode has ended)
+    POST /api/officer/recommend   ask the Case Officer (Hunter only; advisory)
+    POST /api/officer/decide      {"proposal_id", "decision": approve|edit|reject, "edited_params"?}
+    GET  /api/officer/trace       the agent trace as JSONL
 """
 from __future__ import annotations
 
@@ -18,18 +21,29 @@ import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
+from ..agent.tools import ToolError
 from .session import Session, new_session
 
 STATIC = Path(__file__).parent / "static"
 
 
 class App:
-    def __init__(self):
+    def __init__(self, agents: bool = True):
+        self.agents = agents
         self.session: Session | None = None
         self.lock = threading.Lock()
 
     def handle(self, method: str, path: str, body: dict) -> tuple[int, dict | str, str]:
         """Returns (status, payload, content_type). Pure function of state; used by tests."""
+        status, payload, ctype = self._handle(method, path, body)
+        if isinstance(payload, dict):
+            if "observation" in payload:
+                payload["agents_enabled"] = self.agents
+            elif isinstance(payload.get("state"), dict):
+                payload["state"]["agents_enabled"] = self.agents
+        return status, payload, ctype
+
+    def _handle(self, method: str, path: str, body: dict) -> tuple[int, dict | str, str]:
         with self.lock:
             if method == "GET" and path in ("/", "/index.html"):
                 return 200, (STATIC / "index.html").read_text(encoding="utf-8"), "text/html; charset=utf-8"
@@ -64,6 +78,22 @@ class App:
                     return 200, s.replay_text(), "application/json"
                 except PermissionError as e:
                     return 403, {"error": str(e)}, "application/json"
+            if path.startswith("/api/officer/"):
+                if not self.agents:
+                    return 403, {"error": "agents are disabled (started with --no-agents)"}, "application/json"
+                try:
+                    if method == "POST" and path == "/api/officer/recommend":
+                        return 200, s.officer_recommend(), "application/json"
+                    if method == "POST" and path == "/api/officer/decide":
+                        res = s.officer_decide(str(body.get("proposal_id", "")), str(body.get("decision", "")),
+                                               body.get("edited_params"))
+                        return 200, {**res, "state": s.state()}, "application/json"
+                    if method == "GET" and path == "/api/officer/trace":
+                        return 200, s.agent_trace(), "application/x-ndjson"
+                except ValueError as e:
+                    return 409, {"error": str(e)}, "application/json"
+                except ToolError as e:
+                    return 400, {"error": e.code, "message": e.message}, "application/json"
             return 404, {"error": "not found"}, "application/json"
 
 
@@ -108,15 +138,16 @@ def make_handler(app: App):
     return Handler
 
 
-def serve(port: int = 8765) -> ThreadingHTTPServer:
-    return ThreadingHTTPServer(("127.0.0.1", port), make_handler(App()))
+def serve(port: int = 8765, agents: bool = True) -> ThreadingHTTPServer:
+    return ThreadingHTTPServer(("127.0.0.1", port), make_handler(App(agents)))
 
 
 def main() -> None:
     ap = argparse.ArgumentParser(description="Dark Fleet 2D tactical client (local)")
     ap.add_argument("--port", type=int, default=8765)
+    ap.add_argument("--no-agents", action="store_true", help="disable the Case Officer (the game is fully playable without it)")
     args = ap.parse_args()
-    srv = serve(args.port)
+    srv = serve(args.port, agents=not args.no_agents)
     print(f"Dark Fleet client: http://127.0.0.1:{args.port}/  (Ctrl+C to stop)")
     try:
         srv.serve_forever()

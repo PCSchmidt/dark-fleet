@@ -24,7 +24,7 @@ namespace df {
 using json = nlohmann::json;
 
 inline constexpr const char* kBuildId = "df-core-0.2.0";
-inline constexpr const char* kRulesVersion = "df-rules-1";
+inline constexpr const char* kRulesVersion = "df-rules-2";
 
 enum class Role { Hunter, Runner };
 enum class AisMode { On, Dark, Spoof };
@@ -220,6 +220,7 @@ class World {
 
   // Mission
   std::string target_mmsi_, target_class_;
+  bool runner_violated_ = false;  // the Runner has gone dark or spoofed at some point (rules v2)
   bool brief_profile_ = false;
   double last_known_x_ = 0, last_known_y_ = 0, last_known_sigma_ = 0;
   double delivery_x_ = 0, delivery_y_ = 0, delivery_radius_ = 0;

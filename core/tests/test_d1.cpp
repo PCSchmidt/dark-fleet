@@ -128,13 +128,18 @@ TEST_CASE("SAR detects the runner even when its AIS is dark") {
 }
 
 TEST_CASE("Claims: wrong identity, insufficient support, and correct supported outcomes") {
-  const auto run_claim = [](int which) {
+  const auto run_claim = [](int which, bool violate = true) {
     df::GenParams p;
     p.seed = 90;
     p.sar_tasks = 10;
     auto j = df::generate_scenario(p);
     j["sensors"]["sar"]["p_detect"] = {{"large", 1.0}, {"medium", 1.0}, {"small", 1.0}};
     auto w = dft::make_world(j);
+    if (violate) {  // the Runner goes dark for a moment, then back on: it has broken the rules (v2)
+      REQUIRE(w.submit_action(dft::action(Role::Runner, w.tick(), "set_ais_mode", {{"mode", "dark"}})).ok());
+      w.step();
+      REQUIRE(w.submit_action(dft::action(Role::Runner, w.tick(), "set_ais_mode", {{"mode", "on"}})).ok());
+    }
     // Two SAR passes over the runner give two SAR contacts of the same vessel.
     for (int k = 0; k < 2; ++k) {
       const auto& r = w.truth_vessels()[0];
@@ -168,6 +173,10 @@ TEST_CASE("Claims: wrong identity, insufficient support, and correct supported o
   CHECK(wrong.second == df::EpisodeState::ClaimResolved);
   const auto thin = run_claim(1);
   CHECK(thin.first.name == "insufficient_support");
+  const auto innocent = run_claim(2, false);  // same evidence, but the Runner never went dark or spoofed
+  CHECK(innocent.first.name == "unfounded_claim");
+  CHECK(innocent.first.hunter_score < 0);
+  CHECK(innocent.first.runner_score > 0);
   const auto good = run_claim(2);
   CHECK(good.first.name == "correct_supported");
   CHECK(good.first.hunter_score > 100);

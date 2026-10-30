@@ -54,7 +54,7 @@
       "required": ["state", "outcome"],
       "properties": {
         "state": {"enum": ["running", "runner_delivered", "claim_resolved", "timeout"]},
-        "outcome": {"enum": ["none", "runner_delivered", "correct_supported", "insufficient_support", "wrong_identity", "timeout"]}
+        "outcome": {"enum": ["none", "runner_delivered", "correct_supported", "insufficient_support", "wrong_identity", "unfounded_claim", "timeout"]}
       }
     },
     "own": {
