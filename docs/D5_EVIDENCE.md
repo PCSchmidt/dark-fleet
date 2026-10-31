@@ -40,7 +40,7 @@
 ## Not done
 - Sequence-model anomaly detector, deep self-play (PPO), Hunter planner learning, sensor-image models (ML.md sections 2, 3, 4, 6).
 - The anomaly detector is not wired into any agent, and has not been tested against the learned Runner.
-- No language model (the offered OpenRouter key has not been used yet); no human data.
+- No language model inside D5 itself; a hosted model was evaluated afterwards, see [LLM_AGENT.md](./LLM_AGENT.md). No human data.
 - No cross-machine reproduction.
 
 ## Reproduce

@@ -32,6 +32,8 @@ Maps requirement IDs from [REQUIREMENTS.md](./REQUIREMENTS.md) to evidence. "Par
 | ML.md s2 AIS anomaly detector | Built; synthetic-only, not integrated | `ml/anomaly.py`, `docs/model-cards/anomaly-detector.md` |
 | ML.md s3 Runner policy via self-play | Built as parametric search, not deep RL | `ml/runner_es.py`, `docs/model-cards/learned-runner.md` |
 | ML.md s5 claim calibration | Built; used by `case_officer_cal` | `ml/calibrator.py`, `docs/model-cards/claim-calibrator.md` |
+| Spike S15 model drives the tool surface | Partial: one hosted model, 150 episodes, 0.84% tool errors; not three local models | `docs/LLM_AGENT.md`, `bench/llm/` |
+| Spike S17 injection, model half | Partial: 68 attack episodes, 0 successes; no adaptive attacker | `docs/LLM_AGENT.md` |
 | US-4 agent assists the Hunter, visibly | Built; owner playtest pending | Case Officer panel, `test_agent.py::test_game_server_officer_flow_*` |
 | FR-050 baseline tracker + scripted Runner | Done | `python/darkfleet/`, `docs/D1_EVIDENCE.md` |
 | FR-051 learned Runner / anomaly detector | Not started | - |

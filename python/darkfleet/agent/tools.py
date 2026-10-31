@@ -129,7 +129,11 @@ SPEC_BY_NAME = {s["name"]: s for s in TOOL_SPECS}
 
 class ToolHost:
     def __init__(self, get_obs: Callable[[], dict], submit: Callable[[dict], dict], tick_s: float = 300.0,
-                 seed: int = 0, n_particles: int = 1500, limits: Limits | None = None, trace: Trace | None = None):
+                 seed: int = 0, n_particles: int = 1500, limits: Limits | None = None, trace: Trace | None = None,
+                 raw_names: bool = False):
+        """``raw_names=True`` returns vessel names unsanitised under a plain ``name`` key. It exists only to measure what the
+        sanitiser and the ``untrusted`` labelling are worth (spike S17); never use it in the game."""
+        self.raw_names = raw_names
         self._get_obs, self._submit = get_obs, submit
         self.capability = secrets.token_hex(8)
         self.limits = limits or Limits()
@@ -197,13 +201,18 @@ class ToolHost:
         o = self._obs
         return {"tick": o["tick"], "brief": o.get("brief", {}), "status": o["status"]}
 
-    @staticmethod
-    def _public_contact(c: dict) -> dict:
+    def _put_name(self, d: dict, text) -> None:
+        if self.raw_names:
+            d["name"] = str(text)
+        else:
+            d["name_untrusted"] = sanitize_untrusted(text)
+
+    def _public_contact(self, c: dict) -> dict:
         d = {"contact_id": c["contact_id"], "source": c["source"], "x_m": c["x_m"], "y_m": c["y_m"],
              "sigma_m": c["sigma_m"], "age_ticks": c["age_ticks"]}
         if c["source"] == "ais":
             d["mmsi"] = c["claimed_mmsi"]
-            d["name_untrusted"] = sanitize_untrusted(c["claimed_name"])
+            self._put_name(d, c["claimed_name"])
         else:
             d["size_class"] = c["size_class"]
         return d
@@ -224,7 +233,7 @@ class ToolHost:
              "history": [{"tick": t, "x_m": x, "y_m": y, "sigma_m": s} for t, (x, y, s) in hist]}
         if rec.claimed_mmsi:
             d["mmsi"] = rec.claimed_mmsi
-            d["name_untrusted"] = sanitize_untrusted(rec.claimed_name)
+            self._put_name(d, rec.claimed_name)
         if rec.size_class:
             d["size_class"] = rec.size_class
         return d
@@ -239,8 +248,9 @@ class ToolHost:
             silent = self.ledger.tick - rec.last_tick()
             if silent >= n:
                 x, y, _ = rec.last_position()
-                row = {"contact_id": rec.contact_id, "mmsi": rec.claimed_mmsi, "name_untrusted": sanitize_untrusted(rec.claimed_name),
+                row = {"contact_id": rec.contact_id, "mmsi": rec.claimed_mmsi,
                        "last_report_tick": rec.last_tick(), "silent_ticks": silent, "last_x_m": x, "last_y_m": y}
+                self._put_name(row, rec.claimed_name)
                 if lk:
                     row["km_from_last_known_area"] = round(math.hypot(x - lk["x_m"], y - lk["y_m"]) / 1000.0, 1)
                 out.append(row)

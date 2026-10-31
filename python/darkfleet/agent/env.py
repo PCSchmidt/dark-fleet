@@ -16,7 +16,8 @@ from .tools import ToolHost
 
 class HunterEnv:
     def __init__(self, seed: int, runner_kind: str = "dark_run", n_background: int = 20, duration_ticks: int = 144,
-                 sar_tasks: int = 6, rename_background=None):
+                 sar_tasks: int = 6, rename_background=None, raw_names: bool = False,
+                 runner_name: str | None = None):
         self.seed, self.runner_kind = seed, runner_kind
         self.scenario = make_scenario(seed, n_background, duration_ticks, sar_tasks, brief="profile")
         if rename_background is not None:  # injection suite: put attacker-controlled text in vessel names
@@ -25,10 +26,14 @@ class HunterEnv:
                 if not v["is_runner"]:
                     v["name"] = rename_background(i)
                     i += 1
+        if runner_name is not None:   # injection study: the Runner controls its own broadcast name
+            for v in self.scenario["entities"]["vessels"]:
+                if v["is_runner"]:
+                    v["name"] = runner_name
         self.world = core.World(json.dumps(self.scenario))
         self.runner = RunnerPolicy(kind=runner_kind, seed=seed)
         self.rejections: list[str] = []
-        self.host = ToolHost(self.hunter_obs, self.submit, tick_s=self.scenario["time"]["tick_s"], seed=seed)
+        self.host = ToolHost(self.hunter_obs, self.submit, tick_s=self.scenario["time"]["tick_s"], seed=seed, raw_names=raw_names)
 
     # -- plumbing -----------------------------------------------------------------------
     @property
