@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/PCSchmidt/dark-fleet/schemas/bench-result.v1.json",
+  "title": "DarkFleet-Bench result v1",
+  "type": "object",
+  "required": ["schema_version", "bench_version", "rules_version", "seed_set", "seeds", "tiers", "agents",
+               "reference_agent", "not_measured", "episodes", "digest", "summary", "paired_vs_reference", "run"],
+  "properties": {
+    "schema_version": {"const": "bench-result.v1"},
+    "bench_version": {"type": "string"},
+    "rules_version": {"type": "string"},
+    "seed_set": {"type": "string"},
+    "seeds": {"type": "object", "additionalProperties": {"type": "array", "items": {"type": "integer"}}},
+    "tiers": {"type": "object"},
+    "agents": {"type": "object", "additionalProperties": {"type": "string"}},
+    "reference_agent": {"type": "string"},
+    "not_measured": {"type": "array", "items": {"type": "string"}},
+    "digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "episodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["agent", "tier", "seed", "rep", "outcome", "hunter_score", "success", "accused", "false_accusation",
+                     "end_tick", "sar_used", "wall_ms", "replay_verified", "final_state_hash"],
+        "properties": {
+          "agent": {"type": "string"},
+          "tier": {"type": "string"},
+          "seed": {"type": "integer"},
+          "rep": {"type": "integer", "minimum": 0},
+          "outcome": {"enum": ["runner_delivered", "correct_supported", "insufficient_support", "wrong_identity", "unfounded_claim", "timeout"]},
+          "hunter_score": {"type": "number"},
+          "success": {"type": "boolean"},
+          "accused": {"type": "boolean"},
+          "false_accusation": {"type": "boolean"},
+          "end_tick": {"type": "integer", "minimum": 0},
+          "sar_used": {"type": "integer", "minimum": 0},
+          "tool_calls": {"type": ["integer", "null"]},
+          "tool_errors": {"type": ["integer", "null"]},
+          "wall_ms": {"type": "number"},
+          "replay_verified": {"type": "boolean"},
+          "final_state_hash": {"type": "string"}
+        }
+      }
+    },
+    "summary": {"type": "object"},
+    "paired_vs_reference": {"type": "object"},
+    "run": {"type": "object", "required": ["workers", "wall_s"]}
+  }
+}

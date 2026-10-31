@@ -27,9 +27,14 @@ STATUS_LABEL = {
 
 
 class CaseOfficer:
-    def __init__(self, host: ToolHost, llm: LLM | None = None):
+    def __init__(self, host: ToolHost, llm: LLM | None = None, audit: bool = True,
+                 dark_evidence_ticks: int = DARK_EVIDENCE_TICKS):
+        """``audit`` and ``dark_evidence_ticks`` exist for ablations in the benchmark."""
         self.host = host
         self.llm = llm or NullLLM()
+        self.dark_evidence_ticks = dark_evidence_ticks
+        if not audit:
+            host.audit_proposed = True   # the planner proposes the audit pass only once; mark it as done
 
     # -- tool access with error capture ---------------------------------------------------------
     def _tool(self, name: str, args: dict | None = None) -> dict | None:
@@ -126,7 +131,7 @@ class CaseOfficer:
                 "rationale": "AIS position is false: the vessel under it is elsewhere, and two SAR passes confirm its track."})
             if p:
                 proposals.append(p)
-        elif self.host.max_silent >= DARK_EVIDENCE_TICKS:
+        elif self.host.max_silent >= self.dark_evidence_ticks:
             p = self._tool("propose_claim", {
                 "contact_id": ids[-1], "evidence": ids,
                 "rationale": f"Target went dark for up to {self.host.max_silent} ticks and the SAR chain agrees with the tracker."})

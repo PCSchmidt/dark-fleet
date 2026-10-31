@@ -1,6 +1,6 @@
 # Dark Fleet - Agent Layer Specification
 
-**Status:** Draft v1 design, partly implemented at D3 (see [D3_EVIDENCE.md](./D3_EVIDENCE.md) for exactly what: Case Officer with three deterministic specialists, tool surface, citation checker, MCP server, static injection suite; **not** done: Fixer, Tip generator, Air/Surface planner, real-model evaluation, DarkFleet-Bench, adaptive attacker). Items tagged `[VERIFY]` depend on external tools or specifications that change quickly.
+**Status:** Draft v1 design, partly implemented at D3 and D4 (benchmark: [BENCH.md](./BENCH.md); scripted agents only, no model evaluated) (see [D3_EVIDENCE.md](./D3_EVIDENCE.md) for exactly what: Case Officer with three deterministic specialists, tool surface, citation checker, MCP server, static injection suite; **not** done: Fixer, Tip generator, Air/Surface planner, real-model evaluation, DarkFleet-Bench, adaptive attacker). Items tagged `[VERIFY]` depend on external tools or specifications that change quickly.
 **Decision:** [ADR 0004](https://github.com/PCSchmidt/hyperreal-platform/blob/main/docs/adr/0004-headless-first-and-agent-isolation.md).
 
 ## 1. Purpose

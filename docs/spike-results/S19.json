@@ -1,0 +1,16 @@
+{
+  "runs": 3,
+  "digests": [
+    "a389719070ae7a345b1df679e2cd491b05ad2779f5b82cb2fde6517c48974804",
+    "a389719070ae7a345b1df679e2cd491b05ad2779f5b82cb2fde6517c48974804",
+    "a389719070ae7a345b1df679e2cd491b05ad2779f5b82cb2fde6517c48974804"
+  ],
+  "identical": true,
+  "wall_s": [
+    337.8,
+    349.0,
+    352.6
+  ],
+  "episodes_per_run": 1350,
+  "note": "digest covers every episode record except wall-clock time; produced by `python -m darkfleet.bench --seeds heldout`"
+}
