@@ -20,8 +20,8 @@ class EpisodeResult:
 
 
 def make_scenario(seed: int, n_background: int = 20, duration_ticks: int = 144, sar_tasks: int = 6,
-                  brief: str = "mmsi") -> dict:
-    return json.loads(core.generate_scenario(seed, n_background, duration_ticks, sar_tasks, brief))
+                  brief: str = "mmsi", outage_probability: float = 0.3) -> dict:
+    return json.loads(core.generate_scenario(seed, n_background, duration_ticks, sar_tasks, brief, outage_probability))
 
 
 def play(scenario: dict, runner: RunnerPolicy, hunter: HunterBot, record_trace: bool = False) -> EpisodeResult:

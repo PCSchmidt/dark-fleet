@@ -161,6 +161,7 @@ class ToolHost:
             fix = a.dr.last_fix_tick()
             if fix is not None:
                 self.max_silent = max(self.max_silent, obs["tick"] - fix)
+            a.max_silent = self.max_silent
             res = obs["resources"]
             a.pending_execs.update(q["exec_tick"] for q in res["pending_taskings"])
             if a.audit_requested and a.audit_exec is None and res["pending_taskings"]:

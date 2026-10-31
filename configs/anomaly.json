@@ -1,0 +1,50 @@
+{
+  "model": "ais-gap-anomaly-detector",
+  "seed": 1,
+  "kinds": [
+    "dark_run",
+    "honest",
+    "dark_run"
+  ],
+  "checkpoints": [
+    6,
+    12,
+    18,
+    24
+  ],
+  "min_gap": 3,
+  "target_fpr": 0.05,
+  "logreg_C": 1.0,
+  "splits": {
+    "train": {
+      "first_seed": 10000,
+      "n": 900
+    },
+    "val": {
+      "first_seed": 11000,
+      "n": 300
+    },
+    "test_iid": {
+      "first_seed": 20000,
+      "n": 400
+    },
+    "test_shift": {
+      "first_seed": 21000,
+      "n": 400,
+      "n_background": 45,
+      "outage_probability": 0.6
+    },
+    "test_mimic": {
+      "first_seed": 22000,
+      "n": 400,
+      "runner_speed_scale": 0.75
+    }
+  },
+  "gbt": {
+    "n_estimators": 200,
+    "learning_rate": 0.05,
+    "max_depth": 3,
+    "subsample": 0.8,
+    "min_samples_leaf": 20
+  }
+}

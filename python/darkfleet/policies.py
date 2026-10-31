@@ -116,6 +116,8 @@ class HunterBot:
         self.pending_execs: set[int] = set()
         self.notes: list[str] = []
         self.max_silent = 0
+        self.lock_dist_m: float | None = None
+        self.lock_margin_m: float | None = None
 
     # tracker access for evaluation
     def estimate(self) -> tuple[float, float] | None:
@@ -140,13 +142,19 @@ class HunterBot:
         if self.locked_mmsi is None:
             lk = brief["last_known"]
             best, best_d = None, self.cfg.lock_radius_m
+            dists = []
             for c in obs["contacts"]:
                 if c["source"] != "ais" or c["age_ticks"] > 1:
                     continue
                 d = math.hypot(c["x_m"] - lk["x_m"], c["y_m"] - lk["y_m"])
+                dists.append(d)
                 if d < best_d:
                     best, best_d = c["claimed_mmsi"], d
             self.locked_mmsi = best
+            if best is not None:   # how ambiguous was the lock? (used by the claim calibrator)
+                dists.sort()
+                self.lock_dist_m = dists[0]
+                self.lock_margin_m = (dists[1] - dists[0]) if len(dists) > 1 else 50000.0
         if self.locked_mmsi is None:
             return obs
         return {**obs, "brief": {**brief, "target_mmsi": self.locked_mmsi}}
