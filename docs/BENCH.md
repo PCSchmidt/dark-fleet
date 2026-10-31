@@ -78,4 +78,4 @@ Three independent runs of the full held-out benchmark produced the same digest (
 | Reproducible with one command | Yes; three-run digest identical; clean-clone check below |
 | Methodology write-up | This file |
 
-Clean-clone reproduction: see the end of this file once recorded.
+Clean-clone reproduction (commit `d06d219`): a fresh `git clone --recurse-submodules` from GitHub, built from scratch, produced the same quick-set digest (`5bb47bed6b26bec4`) as the working copy. This was checked on the quick set (2 seeds per tier), not the full held-out set, and on one machine, one compiler and one Python version; cross-platform bit-for-bit reproduction is not claimed.

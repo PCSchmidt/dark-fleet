@@ -12,5 +12,13 @@
     352.6
   ],
   "episodes_per_run": 1350,
-  "note": "digest covers every episode record except wall-clock time; produced by `python -m darkfleet.bench --seeds heldout`"
+  "note": "digest covers every episode record except wall-clock time; produced by `python -m darkfleet.bench --seeds heldout`",
+  "clean_clone": {
+    "commit": "d06d219",
+    "method": "git clone --recurse-submodules from GitHub, cmake build, `python -m darkfleet.bench --quick --workers 1`",
+    "digest_prefix": "5bb47bed6b26bec4",
+    "local_digest_prefix": "5bb47bed6b26bec4",
+    "match": true,
+    "scope": "quick set (2 seeds per tier, 7 agents); the full held-out set was reproduced three times in the working copy"
+  }
 }
