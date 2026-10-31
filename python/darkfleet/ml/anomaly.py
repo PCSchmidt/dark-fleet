@@ -20,7 +20,7 @@ from pathlib import Path
 
 import numpy as np
 
-from .common import canonical_digest, cluster_bootstrap, load_config, provenance, write_json
+from .common import assert_disjoint_splits, canonical_digest, cluster_bootstrap, load_config, provenance, write_json
 
 TICK_S = 300.0
 RUNNER_MMSI = "999000001"
@@ -188,6 +188,7 @@ def main() -> None:
     ap.add_argument("--no-export", action="store_true")
     args = ap.parse_args()
     cfg = load_config(args.config)
+    assert_disjoint_splits(cfg["splits"])
     t0 = time.perf_counter()
     cp, mg = cfg["checkpoints"], cfg["min_gap"]
     ds = {}

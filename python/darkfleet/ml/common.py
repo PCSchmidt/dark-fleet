@@ -23,7 +23,9 @@ def git_state() -> dict:
             return subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, timeout=20).stdout.strip()
         except Exception:
             return ""
-    return {"commit": run("rev-parse", "HEAD")[:12] or "unknown", "dirty": bool(run("status", "--porcelain"))}
+    # "dirty" = uncommitted changes to anything that can affect training (code, configs, schemas), not to docs
+    code = ["python", "core", "bindings", "configs", "schemas", "CMakeLists.txt"]
+    return {"commit": run("rev-parse", "HEAD")[:12] or "unknown", "dirty": bool(run("status", "--porcelain", "--", *code))}
 
 
 def versions() -> dict:
@@ -47,6 +49,14 @@ def provenance(config: dict, dataset_digest: str) -> dict:
 
 def load_config(path: str | Path) -> dict:
     return json.loads(Path(path).read_text(encoding="utf-8"))
+
+
+def assert_disjoint_splits(splits: dict) -> None:
+    """Seed ranges of different splits must not overlap: a shared seed is a shared scenario, i.e. test data in training."""
+    spans = sorted((v["first_seed"], v["first_seed"] + v["n"], k) for k, v in splits.items())
+    for (a0, a1, an), (b0, b1, bn) in zip(spans, spans[1:]):
+        if a1 > b0:
+            raise ValueError(f"splits {an} [{a0},{a1}) and {bn} [{b0},{b1}) share seeds")
 
 
 def write_json(path: str | Path, obj) -> None:

@@ -1,0 +1,32 @@
+{
+  "model": "claim-calibrator",
+  "seed": 1,
+  "n_particles": 1500,
+  "logreg_C": 1.0,
+  "gbt": {
+    "n_estimators": 150,
+    "learning_rate": 0.05,
+    "max_depth": 3,
+    "subsample": 0.8,
+    "min_samples_leaf": 15
+  },
+  "splits": {
+    "train": {
+      "first_seed": 30000,
+      "n": 3200
+    },
+    "val": {
+      "first_seed": 70000,
+      "n": 800
+    },
+    "test_iid": {
+      "first_seed": 71000,
+      "n": 1200
+    },
+    "test_shift": {
+      "first_seed": 73000,
+      "n": 600,
+      "force_tier": 3
+    }
+  }
+}

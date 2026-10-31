@@ -29,6 +29,9 @@ Maps requirement IDs from [REQUIREMENTS.md](./REQUIREMENTS.md) to evidence. "Par
 | FR-045 injection suite | Done (static, tool layer only) | `agent/injection.py`, `docs/spike-results/S17-static.json` |
 | US-6 benchmark an agent | Built; scripted agents only | `python/darkfleet/bench.py`, `docs/BENCH.md`, `docs/bench/`, `python/tests/test_bench.py` |
 | NFR reproducibility of results | Done for the bench | three-run digest identical (`docs/spike-results/S19.json`) |
+| ML.md s2 AIS anomaly detector | Built; synthetic-only, not integrated | `ml/anomaly.py`, `docs/model-cards/anomaly-detector.md` |
+| ML.md s3 Runner policy via self-play | Built as parametric search, not deep RL | `ml/runner_es.py`, `docs/model-cards/learned-runner.md` |
+| ML.md s5 claim calibration | Built; used by `case_officer_cal` | `ml/calibrator.py`, `docs/model-cards/claim-calibrator.md` |
 | US-4 agent assists the Hunter, visibly | Built; owner playtest pending | Case Officer panel, `test_agent.py::test_game_server_officer_flow_*` |
 | FR-050 baseline tracker + scripted Runner | Done | `python/darkfleet/`, `docs/D1_EVIDENCE.md` |
 | FR-051 learned Runner / anomaly detector | Not started | - |

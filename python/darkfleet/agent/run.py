@@ -16,15 +16,18 @@ from .env import HunterEnv
 def autopilot(env: HunterEnv, officer: CaseOfficer | None = None, max_ticks: int = 144) -> dict:
     officer = officer or CaseOfficer(env.host)
     approved = 0
+    claim_confidence = None
     while not env.ended and env.tick < max_ticks:
         report = officer.recommend()
         for p in report["proposals"]:
             if p["status"] == "pending" and not env.ended:
                 env.host.approve(p["id"])
                 approved += 1
+                if p["kind"] == "claim":
+                    claim_confidence = p.get("confidence")
         env.step(1)
     return {"outcome": env.outcome(), "approved": approved, "tool_calls": env.host.trace.totals()["tool_calls"],
-            "verification": env.verify()}
+            "verification": env.verify(), "claim_confidence": claim_confidence}
 
 
 def main() -> None:

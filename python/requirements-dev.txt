@@ -1,3 +1,8 @@
 pytest>=8
 jsonschema>=4.22
 numpy>=1.26
+# D5 machine-learning extras (tests skip when absent)
+scikit-learn>=1.5
+onnx>=1.16
+onnxruntime>=1.18
+skl2onnx>=1.17

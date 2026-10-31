@@ -2,10 +2,12 @@
 
 An asymmetric hidden-information cat-and-mouse game on a photoreal ocean: a fictional covert tanker versus analysts, aircraft, cutters and satellites. Real geography; entirely fictional vessels, companies and incidents.
 
-**Status:** D0 and D1 complete; D2, D3 and D4 built, owner playtest pending. Engine-independent C++ core with traffic generator, AIS and SAR sensors, claims and scoring, verified replays and a role-filter leak harness; Python trackers and bots; a local 2D map client where you can play either role against a bot; an agent layer (Hunter tool surface, citation checker, Case Officer, MCP server, injection suite). See [docs/D0_EVIDENCE.md](docs/D0_EVIDENCE.md), [docs/D1_EVIDENCE.md](docs/D1_EVIDENCE.md) and [docs/D2_EVIDENCE.md](docs/D2_EVIDENCE.md). It is playable but **not balanced**, and nobody has playtested it yet.
+**Status:** D0 and D1 complete; D2, D3, D4 and D5 built, owner playtest pending. Engine-independent C++ core with traffic generator, AIS and SAR sensors, claims and scoring, verified replays and a role-filter leak harness; Python trackers and bots; a local 2D map client where you can play either role against a bot; an agent layer (Hunter tool surface, citation checker, Case Officer, MCP server, injection suite). See [docs/D0_EVIDENCE.md](docs/D0_EVIDENCE.md), [docs/D1_EVIDENCE.md](docs/D1_EVIDENCE.md) and [docs/D2_EVIDENCE.md](docs/D2_EVIDENCE.md). It is playable but **not balanced**, and nobody has playtested it yet.
 
 | Document | Purpose |
 |---|---|
+| [docs/D5_EVIDENCE.md](docs/D5_EVIDENCE.md) | D5 machine learning: three models, held-out results, the learned-Runner finding, limits |
+| [docs/model-cards/](docs/model-cards/) | Model cards: anomaly detector, claim calibrator, learned Runner |
 | [docs/BENCH.md](docs/BENCH.md) | DarkFleet-Bench v1: protocol, held-out results with CIs, ablations, negative results |
 | [docs/D3_EVIDENCE.md](docs/D3_EVIDENCE.md) | D3 agent layer evidence, spike results S14/S16/S17 (static), limits |
 | [docs/D2_EVIDENCE.md](docs/D2_EVIDENCE.md) | D2 verification evidence, bot results, playtest status and limits |
@@ -48,6 +50,15 @@ PYTHONPATH=build/python:python python -m darkfleet.play.server
 Choose Hunter or Runner and press Start. You act on the same role-filtered observations the bots get; the true Runner track is shown only in the debrief, after the replay has been verified by re-simulation. Standard library only; the server binds to localhost.
 
 Hunter games include an optional **Case Officer** panel: it proposes SAR taskings and claims with cited evidence and a visible tool trace, and nothing happens until you approve. Start with `--no-agents` to turn it off; the game is fully playable without it. A model can write the closing summary if you set `DF_LLM=anthropic` and `ANTHROPIC_API_KEY` (untested against the live API; the default needs no model).
+
+### Train the models (D5)
+```
+python -m pip install -r python/requirements-dev.txt        # includes scikit-learn, onnx, onnxruntime, skl2onnx
+PYTHONPATH=build/python:python python -m darkfleet.ml.anomaly    --config configs/anomaly.json    --out models/anomaly      # ~3 min
+PYTHONPATH=build/python:python python -m darkfleet.ml.calibrator --config configs/calibrator.json --out models/calibrator   # ~13 min
+PYTHONPATH=build/python:python python -m darkfleet.ml.runner_es  --config configs/runner.json     --out models/runner       # ~75 min
+```
+Trained artifacts are committed under `models/` with their metrics and provenance.
 
 ### Run the benchmark
 ```

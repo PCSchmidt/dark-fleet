@@ -1,0 +1,136 @@
+{
+  "format": "darkfleet-learned-runner-v1",
+  "params": {
+    "dark1_start": 32.46412824924982,
+    "dark1_len": 1.5746182704422238,
+    "dark2_start": 113.84429631704461,
+    "dark2_len": 3.7815078235320003,
+    "dogleg_offset": 9.706846470624516,
+    "dogleg_len": 22.175617299392083,
+    "dogleg_deg": 86.0268034091398,
+    "speed_frac": 0.8987388422746623,
+    "detour_km": -4.47271730977675,
+    "spoof_start": 0.6471088687382782,
+    "spoof_len": 7.621159986052117,
+    "spoof_mag_km": 19.969559133250947,
+    "spoof_angle_deg": 320.4047737145845,
+    "pause_every": 2.3272811213435642,
+    "pause_len": 1.3445947241862928,
+    "turn_jitter_deg": 4.526860503103131,
+    "dark2_dogleg_deg": 22.180955636536332
+  },
+  "bounds": {
+    "dark1_start": [
+      4.0,
+      60.0
+    ],
+    "dark1_len": [
+      0.0,
+      90.0
+    ],
+    "dark2_start": [
+      40.0,
+      130.0
+    ],
+    "dark2_len": [
+      0.0,
+      40.0
+    ],
+    "dogleg_offset": [
+      -10.0,
+      30.0
+    ],
+    "dogleg_len": [
+      0.0,
+      30.0
+    ],
+    "dogleg_deg": [
+      -150.0,
+      150.0
+    ],
+    "speed_frac": [
+      0.65,
+      1.0
+    ],
+    "detour_km": [
+      -60.0,
+      60.0
+    ],
+    "spoof_start": [
+      0.0,
+      120.0
+    ],
+    "spoof_len": [
+      0.0,
+      70.0
+    ],
+    "spoof_mag_km": [
+      0.0,
+      35.0
+    ],
+    "spoof_angle_deg": [
+      0.0,
+      360.0
+    ],
+    "pause_every": [
+      0.0,
+      40.0
+    ],
+    "pause_len": [
+      0.0,
+      6.0
+    ],
+    "turn_jitter_deg": [
+      0.0,
+      30.0
+    ],
+    "dark2_dogleg_deg": [
+      -90.0,
+      90.0
+    ]
+  },
+  "provenance": {
+    "config": {
+      "model": "learned-runner-cem-selfplay",
+      "seed": 3,
+      "rounds": 2,
+      "generations": 10,
+      "population": 24,
+      "elite": 5,
+      "seeds_per_candidate": 6,
+      "init_std_frac": 0.25,
+      "min_std_frac": 0.02,
+      "smooth": 0.3,
+      "return_mean": true,
+      "br_candidates": 24,
+      "br_seeds": 20,
+      "heldout_seeds": 60,
+      "train_pool": [
+        "pf_greedy",
+        "pf_audit"
+      ],
+      "eval_hunters": [
+        "pf_greedy",
+        "pf_audit",
+        "dr_rule",
+        "pf_audit_tuned",
+        "case_officer"
+      ]
+    },
+    "config_hash": "61c13ef982b6bb139dfc056296c1f6751f115141b30ca7b88adb22065d8895e2",
+    "dataset_digest": "d292047c3541978186eaa938b412ceed8636fd95fd4bda33454ce68a9e0e6307",
+    "git": {
+      "commit": "eb25f0d3aaa7",
+      "dirty": true
+    },
+    "versions": {
+      "python": "3.14.6",
+      "numpy": "2.5.2",
+      "sklearn": "1.9.1",
+      "onnx": "1.23.2",
+      "onnxruntime": "1.31.1",
+      "skl2onnx": "1.20.0"
+    },
+    "platform": "win32"
+  }
+}

@@ -319,6 +319,7 @@ function renderOfficer(rep) {
     const a = p.action.params;
     c.appendChild(el("div", p.kind === "sar_tasking" ? `Task SAR at (${(a.x_m / 1000).toFixed(1)}, ${(a.y_m / 1000).toFixed(1)}) km` : `File claim on ${a.contact_id} citing ${a.evidence.length} contact(s)`));
     c.appendChild(el("div", "why (agent text, untrusted): " + p.rationale_untrusted.untrusted, "dim"));
+    if (p.confidence !== undefined && p.confidence !== null) c.appendChild(el("div", `calibrated confidence the claim is correct: ${(100 * p.confidence).toFixed(0)}%`, p.confidence < 0.5 ? "bad" : "good"));
     if (p.status === "blocked") { c.appendChild(el("div", "BLOCKED: " + p.blocked_reasons.join("; "), "bad")); box.appendChild(c); continue; }
     const row = el("div", undefined, "row"); let ex, ey;
     if (p.kind === "sar_tasking") {

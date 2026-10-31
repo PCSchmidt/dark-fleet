@@ -58,7 +58,10 @@ AGENTS = {
     "case_officer":       "The D3 Case Officer, scripted specialists, a human-equivalent auto-approver, no model.",
     "case_officer_noaudit": "Ablation: Case Officer without the audit pass.",
     "case_officer_nodark":  "Ablation: Case Officer without the dark-evidence rule (may accuse after any silence).",
+    "case_officer_cal":   "Case Officer with the D5 claim calibrator: claims carry a calibrated confidence and are withheld below 30%.",
 }
+CALIBRATOR_DIR = "models/calibrator"
+CLAIM_THRESHOLD = 0.3   # decision-theoretic: claim if p*~110 - (1-p)*~40 >= 0, i.e. p >= ~0.27
 REFERENCE = "pf_greedy"
 REPEATS = {"random": 3}
 
@@ -118,6 +121,7 @@ def run_episode(ep: Episode) -> dict:
     tier = TIERS.get(ep.tier) or EXTRA_TIERS[ep.tier]
     t0 = time.perf_counter()
     tool_calls = tool_errors = None
+    claim_conf = None
     if ep.agent.startswith("case_officer"):
         from .agent.case_officer import CaseOfficer
         from .agent.env import HunterEnv
@@ -125,7 +129,11 @@ def run_episode(ep: Episode) -> dict:
         rename = (lambda i, p=_payload(ep.seed): p) if tier["inject"] else None
         env = HunterEnv(ep.seed, tier["runner"], n_background=tier["n_background"], rename_background=rename)
         kwargs = {"case_officer_noaudit": {"audit": False}, "case_officer_nodark": {"dark_evidence_ticks": 0}}.get(ep.agent, {})
+        if ep.agent == "case_officer_cal":
+            from .ml.calibrator import ClaimConfidence
+            kwargs = {"claim_model": ClaimConfidence(Path(__file__).resolve().parents[2] / CALIBRATOR_DIR), "claim_threshold": CLAIM_THRESHOLD}
         res = autopilot(env, CaseOfficer(env.host, **kwargs))
+        claim_conf = res.get("claim_confidence")
         tot = env.host.trace.totals()
         tool_calls, tool_errors = tot["tool_calls"], tot["tool_errors"]
         outcome, verified = res["outcome"], res["verification"]["code"] == "OK"
@@ -151,7 +159,7 @@ def run_episode(ep: Episode) -> dict:
     return {"agent": ep.agent, "tier": ep.tier, "seed": ep.seed, "rep": ep.rep, "outcome": oc,
             "hunter_score": outcome["hunter_score"], "success": bool(success), "accused": oc in ACCUSED,
             "false_accusation": oc in FALSE_ACCUSATION, "end_tick": replay["n_ticks"], "sar_used": sar_used,
-            "tool_calls": tool_calls, "tool_errors": tool_errors, "wall_ms": round(wall_ms, 1),
+            "claim_confidence": claim_conf, "tool_calls": tool_calls, "tool_errors": tool_errors, "wall_ms": round(wall_ms, 1),
             "replay_verified": bool(verified), "final_state_hash": replay["final_state_hash"]}
 
 
@@ -186,6 +194,36 @@ def _mean(rows: list[dict], key: str) -> dict:
     return {"mean": m, "ci95": [lo, hi]}
 
 
+def _claim_precision(rows: list[dict]) -> dict | None:
+    claims = [r for r in rows if r["accused"]]
+    if not claims:
+        return None
+    k = sum(1 for r in claims if r["outcome"] == "correct_supported")
+    p, lo, hi = wilson(k, len(claims))
+    return {"k": k, "n": len(claims), "rate": p, "ci95": [lo, hi]}
+
+
+def _claim_calibration(rows: list[dict]) -> dict | None:
+    """Brier and ECE of the agent's stated confidence, over episodes in which it filed a claim. Agents that state no
+    confidence are scored as if they had said 100%, so the numbers are comparable but that reading is the caller's."""
+    from .ml.common import ece
+    claims = [r for r in rows if r["accused"]]
+    stated = [r for r in claims if r.get("claim_confidence") is not None]
+    if not stated:
+        return None
+    p = np.array([r["claim_confidence"] for r in stated], float)
+    y = np.array([r["outcome"] == "correct_supported" for r in stated], float)
+    rng = np.random.default_rng(3)
+    briers, eces = [], []
+    for _ in range(1000):
+        ix = rng.integers(0, len(p), len(p))
+        briers.append(float(np.mean((p[ix] - y[ix]) ** 2)))
+        eces.append(ece(p[ix], y[ix]))
+    return {"n": len(stated), "brier": float(np.mean((p - y) ** 2)), "brier_ci95": [float(np.percentile(briers, 2.5)), float(np.percentile(briers, 97.5))],
+            "ece": ece(p, y), "ece_ci95": [float(np.percentile(eces, 2.5)), float(np.percentile(eces, 97.5))],
+            "brier_if_said_100pct": float(np.mean((1.0 - y) ** 2)), "mean_confidence": float(p.mean()), "claim_accuracy": float(y.mean())}
+
+
 def summarize_group(rows: list[dict]) -> dict:
     ok = [r for r in rows if r["success"] and r["tier"] != "honest"]
     calls = sum(r["tool_calls"] or 0 for r in rows)
@@ -194,6 +232,8 @@ def summarize_group(rows: list[dict]) -> dict:
         "episodes": len(rows),
         "success": _rate(rows, "success"),
         "false_accusation": _rate(rows, "false_accusation"),
+        "claim_precision": _claim_precision(rows),
+        "claim_calibration": _claim_calibration(rows),
         "accused": _rate(rows, "accused"),
         "hunter_score": _mean(rows, "hunter_score"),
         "time_to_identification_ticks": _mean(ok, "end_tick") if ok else None,
@@ -245,7 +285,7 @@ def summarize(rows: list[dict], agents: list[str]) -> dict:
                       "by_tier": {t: summarize_group([r for r in mine if r["tier"] == t]) for t in TIERS}}
     paired = {a: paired_vs(rows, a, REFERENCE) for a in agents if a != REFERENCE and REFERENCE in agents}
     ablations = {a: paired_vs(rows, a, "case_officer") for a in agents
-                 if a.startswith("case_officer_") and "case_officer" in agents}
+                 if a.startswith("case_officer_") and "case_officer" in agents}   # includes the calibrated variant
     return {"summary": summary, "paired_vs_reference": paired, "paired_ablations_vs_case_officer": ablations}
 
 
@@ -256,15 +296,15 @@ def leaderboard_md(res: dict) -> str:
     lines = [f"# DarkFleet-Bench leaderboard ({res['bench_version']}, seeds: {res['seed_set']}, rules {res['rules_version']})", "",
              "Success = correct supported identification (honest tier: no accusation). Brackets are 95% intervals (Wilson for rates). "
              "Episodes per agent per tier: " + ", ".join(f"{t} {len(res['seeds'][t])}" for t in TIERS) + ".", "",
-             "| Agent | Overall success | " + " | ".join(TIERS) + " | False accusations | Mean score [95% CI] | Ticks to ID | SAR used | ms/episode |",
-             "|---|---|" + "---|" * (len(TIERS) + 5)]
+             "| Agent | Overall success | " + " | ".join(TIERS) + " | False accusations | Claim precision | Mean score [95% CI] | Ticks to ID | SAR used | ms/episode |",
+             "|---|---|" + "---|" * (len(TIERS) + 6)]
     for a in order:
         s = res["summary"][a]
         o = s["overall"]
         t2i = o["time_to_identification_ticks"]
         t2i_txt = "-" if not t2i else "%.0f" % t2i["mean"]
         lines.append(f"| {a} | {pct(o['success'])} | " + " | ".join(pct(s['by_tier'][t]['success']) for t in TIERS) +
-                     f" | {pct(o['false_accusation'])} | {o['hunter_score']['mean']:.1f} [{o['hunter_score']['ci95'][0]:.1f}, {o['hunter_score']['ci95'][1]:.1f}]"
+                     f" | {pct(o['false_accusation'])} | {pct(o['claim_precision']) if o.get('claim_precision') else '-'} | {o['hunter_score']['mean']:.1f} [{o['hunter_score']['ci95'][0]:.1f}, {o['hunter_score']['ci95'][1]:.1f}]"
                      f" | {t2i_txt} | {o['sar_taskings_used']['mean']:.1f} | {o['wall_ms_per_episode']['mean']:.0f} |")
     if res["paired_vs_reference"]:
         lines += ["", f"## Paired difference vs `{REFERENCE}` (same tier and seed)", "",

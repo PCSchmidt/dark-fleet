@@ -1,6 +1,6 @@
 # Dark Fleet - Machine Learning Specification
 
-**Status:** Draft v1 - design only
+**Status:** Draft v1 design; three components implemented at D5 (anomaly detector, claim calibrator, learned Runner): see [D5_EVIDENCE.md](./D5_EVIDENCE.md) and `docs/model-cards/`. Not implemented: sequence-model anomaly detector, PPO/deep self-play, Hunter planner learning, sensor-image models. Original status: design only
 **Standard:** Every learned or statistical component below has: problem formulation, data, baseline, metrics, ablations, reproducible training, export, model card, and CI evaluation. Thresholds stated are *targets to be justified*, not established results.
 
 ## 0. Common infrastructure

@@ -28,21 +28,34 @@ STATUS_LABEL = {
 
 class CaseOfficer:
     def __init__(self, host: ToolHost, llm: LLM | None = None, audit: bool = True,
-                 dark_evidence_ticks: int = DARK_EVIDENCE_TICKS):
-        """``audit`` and ``dark_evidence_ticks`` exist for ablations in the benchmark."""
+                 dark_evidence_ticks: int = DARK_EVIDENCE_TICKS, claim_model=None, claim_threshold: float = 0.0):
+        """``audit`` and ``dark_evidence_ticks`` exist for ablations in the benchmark. ``claim_model`` is an optional
+        ``ClaimConfidence`` (D5): claim proposals then carry a calibrated confidence, and claims below
+        ``claim_threshold`` are withheld."""
         self.host = host
         self.llm = llm or NullLLM()
+        self.claim_model = claim_model
+        self.claim_threshold = claim_threshold
         self.dark_evidence_ticks = dark_evidence_ticks
         if not audit:
             host.audit_proposed = True   # the planner proposes the audit pass only once; mark it as done
 
     # -- tool access with error capture ---------------------------------------------------------
     def _tool(self, name: str, args: dict | None = None) -> dict | None:
+        conf = None
+        if name == "propose_claim" and self.claim_model is not None:
+            conf = self.claim_model.predict(self.host.analyst, self.host._obs, args["contact_id"], args["evidence"])
+            if conf < self.claim_threshold:
+                self.notes.append(f"Claim withheld: calibrated confidence {conf:.0%} is below the {self.claim_threshold:.0%} threshold.")
+                return None
         try:
-            return self.host.call(name, args or {}, self.host.capability)
+            out = self.host.call(name, args or {}, self.host.capability)
         except ToolError as e:
             self.notes.append(f"{name} failed: {e.code}")
             return None
+        if conf is not None and out is not None:
+            out["confidence"] = conf      # same dict object the host stores for this proposal
+        return out
 
     # -- specialists ----------------------------------------------------------------------------
     def _ais_analyst(self) -> list[dict]:
