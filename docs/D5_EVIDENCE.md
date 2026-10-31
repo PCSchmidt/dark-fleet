@@ -25,7 +25,7 @@
 ## Verification
 | Check | Result |
 |---|---|
-| Python tests (ML tests: metrics, provenance, split guard, anomaly features and labels, ONNX end-to-end, calibrator runtime and artifact consistency, runner policy legality, determinism and JSON loading, published-artifact checks) | 95 Python tests pass in total (27 new in `test_ml.py`), none skipped, on Windows and Ubuntu in CI (commit `d8556d5`) |
+| Python tests (ML tests: metrics, provenance, split guard, anomaly features and labels, ONNX end-to-end, calibrator runtime and artifact consistency, runner policy legality, determinism and JSON loading, published-artifact checks) | 95 Python tests pass in total (17 new in `test_ml.py`), none skipped, on Windows and Ubuntu in CI (commit `d8556d5`) |
 | Existing agent and bench tests unchanged and passing | Yes (same run); 36 C++ test cases also pass |
 | Earlier benchmark results unaffected by the new agent | **All 1,350 earlier episodes reproduced identically** in the 1,500-episode run |
 | Every evaluation replay re-simulated | Runner evaluation 60/60 per cell; bench 1,500/1,500 |
