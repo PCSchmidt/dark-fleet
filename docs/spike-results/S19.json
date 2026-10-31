@@ -1,18 +1,18 @@
 {
   "runs": 3,
   "digests": [
-    "a389719070ae7a345b1df679e2cd491b05ad2779f5b82cb2fde6517c48974804",
-    "a389719070ae7a345b1df679e2cd491b05ad2779f5b82cb2fde6517c48974804",
-    "a389719070ae7a345b1df679e2cd491b05ad2779f5b82cb2fde6517c48974804"
+    "413f7b3900545b32479dcb1c307d50039ff70eed6f6a2974c9226c87b2dbb130",
+    "413f7b3900545b32479dcb1c307d50039ff70eed6f6a2974c9226c87b2dbb130",
+    "413f7b3900545b32479dcb1c307d50039ff70eed6f6a2974c9226c87b2dbb130"
   ],
   "identical": true,
   "wall_s": [
-    337.8,
-    349.0,
-    352.6
+    333.9,
+    341.0,
+    334.7
   ],
-  "episodes_per_run": 1350,
-  "note": "digest covers every episode record except wall-clock time; produced by `python -m darkfleet.bench --seeds heldout`",
+  "episodes_per_run": 1500,
+  "note": "digest covers every episode record except wall-clock time; produced by `python -m darkfleet.bench --seeds heldout`; agents: random, dr_rule, pf_greedy, pf_audit, case_officer, case_officer_noaudit, case_officer_nodark, case_officer_cal",
   "clean_clone": {
     "commit": "d06d219",
     "method": "git clone --recurse-submodules from GitHub, cmake build, `python -m darkfleet.bench --quick --workers 1`",
@@ -20,5 +20,9 @@
     "local_digest_prefix": "5bb47bed6b26bec4",
     "match": true,
     "scope": "quick set (2 seeds per tier, 7 agents); the full held-out set was reproduced three times in the working copy"
+  },
+  "superseded": {
+    "digest_before_case_officer_cal": "a389719070ae7a345b1df679e2cd491b05ad2779f5b82cb2fde6517c48974804",
+    "note": "D4 result with 7 agents; all 1,350 of its episodes reproduced identically in the 8-agent run"
   }
 }

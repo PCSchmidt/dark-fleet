@@ -239,7 +239,7 @@ def summarize_group(rows: list[dict]) -> dict:
         "time_to_identification_ticks": _mean(ok, "end_tick") if ok else None,
         "sar_taskings_used": _mean(rows, "sar_used"),
         "tool_call_validity": (1.0 - errs / calls) if calls else None,
-        "wall_ms_per_episode": _mean(rows, "wall_ms"),
+        "wall_ms_per_episode": {**_mean(rows, "wall_ms"), "median": float(np.median([r["wall_ms"] for r in rows]))},
         "replays_verified": sum(1 for r in rows if r["replay_verified"]),
     }
 
@@ -296,7 +296,7 @@ def leaderboard_md(res: dict) -> str:
     lines = [f"# DarkFleet-Bench leaderboard ({res['bench_version']}, seeds: {res['seed_set']}, rules {res['rules_version']})", "",
              "Success = correct supported identification (honest tier: no accusation). Brackets are 95% intervals (Wilson for rates). "
              "Episodes per agent per tier: " + ", ".join(f"{t} {len(res['seeds'][t])}" for t in TIERS) + ".", "",
-             "| Agent | Overall success | " + " | ".join(TIERS) + " | False accusations | Claim precision | Mean score [95% CI] | Ticks to ID | SAR used | ms/episode |",
+             "| Agent | Overall success | " + " | ".join(TIERS) + " | False accusations | Claim precision | Mean score [95% CI] | Ticks to ID | SAR used | median ms/episode |",
              "|---|---|" + "---|" * (len(TIERS) + 6)]
     for a in order:
         s = res["summary"][a]
@@ -305,7 +305,7 @@ def leaderboard_md(res: dict) -> str:
         t2i_txt = "-" if not t2i else "%.0f" % t2i["mean"]
         lines.append(f"| {a} | {pct(o['success'])} | " + " | ".join(pct(s['by_tier'][t]['success']) for t in TIERS) +
                      f" | {pct(o['false_accusation'])} | {pct(o['claim_precision']) if o.get('claim_precision') else '-'} | {o['hunter_score']['mean']:.1f} [{o['hunter_score']['ci95'][0]:.1f}, {o['hunter_score']['ci95'][1]:.1f}]"
-                     f" | {t2i_txt} | {o['sar_taskings_used']['mean']:.1f} | {o['wall_ms_per_episode']['mean']:.0f} |")
+                     f" | {t2i_txt} | {o['sar_taskings_used']['mean']:.1f} | {o['wall_ms_per_episode']['median']:.0f} |")
     if res["paired_vs_reference"]:
         lines += ["", f"## Paired difference vs `{REFERENCE}` (same tier and seed)", "",
                   "| Agent | Score diff [95% CI] | Success diff [95% CI] | Distinguishable from zero? |", "|---|---|---|---|"]

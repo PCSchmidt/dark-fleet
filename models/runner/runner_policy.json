@@ -120,8 +120,8 @@
     "config_hash": "61c13ef982b6bb139dfc056296c1f6751f115141b30ca7b88adb22065d8895e2",
     "dataset_digest": "d292047c3541978186eaa938b412ceed8636fd95fd4bda33454ce68a9e0e6307",
     "git": {
-      "commit": "eb25f0d3aaa7",
-      "dirty": true
+      "commit": "1f76b07fa0cf",
+      "dirty": false
     },
     "versions": {
       "python": "3.14.6",

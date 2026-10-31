@@ -35,8 +35,8 @@
     "config_hash": "a479455e77449ad1e27a6a3ae3981817a2540bfa086ce996d1da3b8a8e7a5da2",
     "dataset_digest": "261c897908739c709d10b13dfc6d7a064894c5fdddcee353dc4403f1c22f2977",
     "git": {
-      "commit": "eb25f0d3aaa7",
-      "dirty": true
+      "commit": "1f76b07fa0cf",
+      "dirty": false
     },
     "versions": {
       "python": "3.14.6",
@@ -762,5 +762,5 @@
     "parity_ok": true,
     "rows_checked": 674
   },
-  "train_seconds": 705.4
+  "train_seconds": 2131.7
 }
