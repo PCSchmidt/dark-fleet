@@ -1,6 +1,6 @@
 # A language-model Hunter: tool use (S15) and prompt injection (S17)
 
-**Date:** 2026-10-31. **Model:** `openai/gpt-6.1-terra` via OpenRouter (the model id the owner put in `.env`). **Status:** done for one hosted model; **the spike plans were three local models for S15 and an adaptive attacker for S17, neither of which was done.** The results are very good, which is itself a warning: see "How much to trust this".
+**Date:** 2026-10-31 (rules v2); addendum 2026-11-01 for rules v3 and a second model. **Model:** `openai/gpt-6.1-terra` via OpenRouter (the model id the owner put in `.env`). **Status:** done for one hosted model; **the spike plans were three local models for S15 and an adaptive attacker for S17, neither of which was done.** The results are very good, which is itself a warning: see "How much to trust this".
 **Raw results:** [bench/llm/](./bench/llm/) (one JSON per condition). **Code:** `python/darkfleet/agent/llm.py`, `llm_agent.py`, `prompts/hunter_v1.md`, `python/darkfleet/bench_llm.py`.
 
 ## What was built
@@ -55,3 +55,25 @@ Results will differ run to run. Each variant costs roughly $0.4-2.5.
 
 ## Next, if wanted
 Evaluate a cheaper and a weaker model on the same seeds to find where the benchmark starts to discriminate; run a search-based attacker against the model; make the game harder (rules v3) so there is something to find.
+
+## Addendum, 2026-11-01: rules v3, a second model, and a control
+Everything above is rules v2 with `openai/gpt-6.1-terra`. After rules v3 ([RULES_V3.md](./RULES_V3.md)) the owner switched `.env` to `xiaomi/mimo-v2.6-pro` for lower cost. The v3 prompt ([hunter_v3.md](../python/darkfleet/agent/prompts/hunter_v3.md)) adds the transfer, the grounds interval and the new payoffs; nothing else about the harness changed. Raw results: `docs/bench/llm-v3/{full,adaptive,control}/`. Seeds are the held-out seeds 2-11 of each tier (the same seeds the scripted agents played), one play per seed, sampled and not reproducible.
+
+**mimo-v2.6-pro, rules v3, 50 episodes (10 per tier):**
+| Tier | LLM (mimo) | `pf_audit` | `pf_audit_sweep` | `random` | mean tick of end | cost per episode |
+|---|---|---|---|---|---|---|
+| standard (dark transfer) | **1/10** [2, 40]% | 6/10 | 7/10 | 0/10 | 114 | $0.091 |
+| honest (no transfer; do not accuse) | 10/10 [72, 100]% | 10/10 | 10/10 | 7/10 | 105 | $0.064 |
+| spoof | **0/10** [0, 28]% | 10/10 | 10/10 | 0/10 | 115 | $0.085 |
+| visible transfer | 6/10 [31, 83]% | 10/10 | 10/10 | 0/10 | 84 | $0.053 |
+| decoy_rich | 3/10 [11, 60]% | 6/10 | 7/10 | 0/10 | 95 | $0.081 |
+It made no false accusation in 50 episodes and filed 12 claims in all; the failures are deliveries it never claimed (recall), not wrong claims. 7,664 tool calls, 254 errors (3.31%), 9 invalid, 1 unknown tool, 0 forbidden; 70 model calls and about 374,000 input and 37,000 output tokens per episode; $3.74 in total; wall time 2.8 hours for 50 episodes on 6 threads (14-25 minutes per episode, against 2-2.5 minutes for the control model). All 50 replays re-verified.
+
+**Control: `openai/gpt-6.1-terra`, same seeds, three tiers.** 30 episodes were attempted and the $2.50 cap stopped the run at 22 completed (the 8 not completed are the last seeds of each tier: spoof 5209-5211, standard 5009-5011, visible 5510-5511, so the 22 are not a random subset). Standard **6/7** [49, 97]%, spoof **7/7** [65, 100]%, visible **8/8** [68, 100]%; 0.98% tool errors, 0 invalid; $0.083-0.115 per episode (the rules-v2 run cost $0.062); episodes ended at about tick 63-70.
+
+**What this says, and does not say.**
+- **The weak result is mostly the model, not the rules.** The previous model solves the v3 game on the same seeds (21 of 22 completed episodes correct; the 22 are a non-random subset, but the rate is at or above the scripted agents' on the full 10 seeds), while mimo does not (7 of 30 in the same three tiers; 0 of 10 in the spoof tier). Rules v3 therefore did **not** remove the ceiling for the strongest model I have: it stays near 95% on 22 episodes (95% lower bounds 49% standard, 65% spoof, 68% visible). What changed is that the benchmark now separates a strong model, a weak model, scripted agents and random play.
+- **mimo-v2.6-pro was cheaper per episode ($0.053-0.091 against $0.083-0.115) but not "similar performance" on this task**: it spent 6x the output tokens (reasoning) and was 7-10x slower per episode, with 3.4 times the tool-error rate (3.31% against 0.98%). This is one prompt written and checked against the other model, so part of the gap may be the prompt and harness, not the model; I did not tune per model.
+- **Against the learned Runners (`adaptive`, mimo only, 8 episodes per generation):** 1 identification in 32 (0/8, 0/8, 0/8, 1/8). This is **not informative about adaptivity**: the same model identifies 1 of 10 scripted dark Runners, so it fails here for the same reason. I did not run the control model against the learned Runners (budget).
+- **Not repeated under v3:** prompt-injection tiers, the raw-tools ablation and the no-defence ablation. Rules v2 results (0 of 68 attacks successful, ceiling) are unchanged and have not been re-measured for the new prompt.
+- **Spend:** $3.74 + $2.64 + $2.52 = $8.90 for these three runs. Cumulative spend on the OpenRouter key is now about $17.2 of its $20 limit.
