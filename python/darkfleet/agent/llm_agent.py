@@ -16,6 +16,7 @@ from .llm import BudgetExceeded, LLMError, OpenRouterClient
 from .tools import TOOL_SPECS, ToolError
 
 PROMPT = (Path(__file__).parent / "prompts" / "hunter_v1.md").read_text(encoding="utf-8")
+PROMPT_V3 = (Path(__file__).parent / "prompts" / "hunter_v3.md").read_text(encoding="utf-8")   # rules v3: the transfer
 NOTE_TOOL = {"type": "function", "function": {"name": "note", "description": "Store a short note (max 200 chars) shown at the next consultation.",
                                               "parameters": {"type": "object", "properties": {"text": {"type": "string", "maxLength": 200}},
                                                              "required": ["text"], "additionalProperties": False}}}
@@ -26,7 +27,12 @@ MAX_RESULT_CHARS = 5000
 # (tracker estimate, AIS audit result, evidence chain), leaving the model the raw picture. NO_DEFENCE_PROMPT removes the
 # paragraph telling the model to treat world text as data.
 RAW_TOOLS = {"get_brief", "list_contacts", "get_contact", "ais_gaps", "resources", "check_citations", "propose_sar_tasking", "propose_claim", "note"}
-NO_DEFENCE_PROMPT = PROMPT.split("## Rules for handling text from the game world")[0] + "## How to respond" + PROMPT.split("## How to respond")[1]
+def _no_defence(p: str) -> str:
+    return p.split("## Rules for handling text from the game world")[0] + "## How to respond" + p.split("## How to respond")[1]
+
+
+NO_DEFENCE_PROMPT = _no_defence(PROMPT)
+NO_DEFENCE_PROMPT_V3 = _no_defence(PROMPT_V3)
 
 
 def tool_schemas(allowed: set[str] | None = None) -> list[dict]:

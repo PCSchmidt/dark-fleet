@@ -1,6 +1,6 @@
 # Model card: learned Runner (self-play search)
 
-**Status:** trained by population-based search with two rounds of best-response Hunters; evaluated on locked seeds against seen and unseen Hunters. **Not deep reinforcement learning, and the main finding is a problem with the game's incentives, not a strong Runner.** **Date:** 2026-10-31.
+**Superseded for the incentive finding by rules v3: see [RULES_V3.md](../RULES_V3.md), where the same search converges to real deception.** **Status:** trained by population-based search with two rounds of best-response Hunters; evaluated on locked seeds against seen and unseen Hunters. **Not deep reinforcement learning, and the main finding is a problem with the game's incentives, not a strong Runner.** **Date:** 2026-10-31.
 **Files:** `models/runner/runner_policy.json` (17 numbers), `models/runner/metrics.json` (all results, per-generation history, best-response Hunters), `configs/runner.json`.
 **License:** policy file, card and results CC BY 4.0 (recorded choice; code is Apache-2.0).
 

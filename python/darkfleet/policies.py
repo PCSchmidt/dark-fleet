@@ -136,6 +136,10 @@ class HunterConfig:
     audit_tick: int = 8
     audit_gate_m: float = 4000.0
     spoof_gate_m: float = 10000.0
+    sweep_area: bool = False         # rules v3: when the target is dark, look at the briefed transfer area at the time it could arrive
+    audit_jump: bool = False         # rules v3: re-audit when the target's AIS track jumps farther than a ship can move
+    stationary_gate_m: float = 1000.0   # rules v3: two sightings this close, grounds_ticks apart, are one stationary vessel
+    explain_gate_m: float = 800.0       # rules v3: a SAR detection is another ship's only if its AIS sits this close
     require_dark_ticks: int = 0      # rules v2: only accuse after the target was silent this long (0 = off, D1/D2 behaviour)
 
 
@@ -163,6 +167,10 @@ class HunterBot:
         self.lock_margin_m: float | None = None
         self.area: dict | None = None          # rules v3: where a transfer is expected (from the brief)
         self.cluster_tasks = 0
+        self.offsets: list[tuple[int, float, float]] = []   # (from_tick, dx, dy): measured spoof offsets, newest last
+        self.audit_from = 0                    # tick from which the audit being run applies (0, or the tick of an AIS jump)
+        self.jump_tick: int | None = None
+        self.reaudit = False
 
     # tracker access for evaluation
     def estimate(self) -> tuple[float, float] | None:
@@ -179,6 +187,15 @@ class HunterBot:
         for c in obs["contacts"]:
             if c["source"] == "ais":
                 self.ais_hist.setdefault(c["claimed_mmsi"], {})[obs["tick"] - c["age_ticks"]] = (c["x_m"], c["y_m"])
+        if self.cfg.audit_jump and self.locked_mmsi is not None:
+            h = self.ais_hist.get(self.locked_mmsi, {})
+            ks = sorted(h)[-2:]
+            if len(ks) == 2 and ks[1] > (self.jump_tick or -1):
+                step = math.hypot(h[ks[1]][0] - h[ks[0]][0], h[ks[1]][1] - h[ks[0]][1])
+                if step > max(3300.0, 1.3 * 8.5 * self.cfg.tick_s * (ks[1] - ks[0])):   # farther than any ship can move
+                    self.jump_tick, self.reaudit = ks[1], True
+                    self.audit_requested, self.audit_result, self.audit_exec, self.audit_from = False, None, None, ks[1]
+                    self.notes.append(f"t={obs['tick']}: the target's AIS track jumped {step / 1000:.0f} km; auditing it again")
 
     def _resolve_brief(self, obs: dict) -> dict:
         """Give the trackers a brief with a target MMSI. Under a profile briefing the bot must
@@ -239,6 +256,10 @@ class HunterBot:
             return
         if any(math.hypot(c["x_m"] - fix[0], c["y_m"] - fix[1]) <= self.cfg.audit_gate_m for c in large):
             self.audit_result = "consistent"
+            if self.audit_from:    # a re-audit after a jump found the AIS truthful again from that tick on
+                self.offsets.append((self.audit_from, 0.0, 0.0))
+                self.spoof_offset = None
+            self.reaudit = False
             self.notes.append(f"t={t}: audit pass found a large vessel at the target's AIS position")
             return
         unexplained = [c for c in large if not self._ais_explains(c["x_m"], c["y_m"], self.audit_exec)]
@@ -248,6 +269,8 @@ class HunterBot:
             return
         c = min(unexplained, key=lambda c: math.hypot(c["x_m"] - fix[0], c["y_m"] - fix[1]))
         self.spoof_offset = (c["x_m"] - fix[0], c["y_m"] - fix[1])
+        self.offsets.append((self.audit_from, self.spoof_offset[0], self.spoof_offset[1]))
+        self.reaudit = False
         self.spoof_contacts[c["contact_id"]] = (self.audit_exec, c["x_m"], c["y_m"])
         self.audit_result = "spoof_suspected"
         self.notes.append(f"t={t}: no vessel under the AIS position; unexplained large vessel at offset "
@@ -336,7 +359,7 @@ class HunterBot:
 
     def _audit_request(self, obs: dict, res: dict) -> list[dict]:
         t = obs["tick"]
-        if (self.cfg.audit_ais and not self.audit_requested and self.locked_mmsi is not None
+        if ((self.cfg.audit_ais or self.reaudit) and not self.audit_requested and self.locked_mmsi is not None
                 and t >= self.cfg.audit_tick and res["sar_tasks_remaining"] > 0 and not res["pending_taskings"]):
             fix = self._target_fix_near(t)
             if fix is not None and t - max(self.ais_hist[self.locked_mmsi]) <= 1:
@@ -349,11 +372,17 @@ class HunterBot:
     # The mission now requires the Runner to loiter in a zone. A claim is grounded once the target has been *seen* in the
     # same place twice, at least ``grounds_ticks`` apart, inside the briefed area, with at least one of the sightings a SAR
     # detection (the adjudicator needs a detection in the zone). Two sightings at one spot imply it stayed there.
-    STATIONARY_GATE_M = 1000.0   # two sightings this close, grounds_ticks apart, are one stationary vessel
-    EXPLAIN_GATE_M = 800.0   # a SAR detection is another ship's only if its AIS sits this close (3 sigma of both sensors)
 
     def _off(self) -> tuple[float, float]:
         return self.spoof_offset or (0.0, 0.0)
+
+    def _off_at(self, tick: int) -> tuple[float, float]:
+        """The measured spoof offset that applied to the target's AIS at ``tick`` (none before the first audit result)."""
+        cur = (0.0, 0.0)
+        for k, dx, dy in self.offsets:
+            if k <= tick:
+                cur = (dx, dy)
+        return cur
 
     def _in_area(self, x: float, y: float) -> bool:
         a = self.area
@@ -361,11 +390,12 @@ class HunterBot:
 
     def target_sightings(self, obs: dict) -> list[dict]:
         """Everything attributable to the target: its (de-spoofed) AIS track, and the large SAR contacts it explains."""
-        t, off = obs["tick"], self._off()
+        t = obs["tick"]
         hist = self.ais_hist.get(self.locked_mmsi or "", {})
         ais_ticks = sorted(hist)
-        pts = [{"tick": k, "x": hist[k][0] + off[0], "y": hist[k][1] + off[1], "src": "ais", "cid": None} for k in ais_ticks]
-        gate = self.cfg.spoof_gate_m if self.spoof_offset else self.cfg.audit_gate_m
+        at = lambda k: (hist[k][0] + self._off_at(k)[0], hist[k][1] + self._off_at(k)[1])   # the target's true position from its AIS
+        pts = [{"tick": k, "x": at(k)[0], "y": at(k)[1], "src": "ais", "cid": None} for k in ais_ticks]
+        gate = self.cfg.spoof_gate_m if any(dx or dy for _, dx, dy in self.offsets) else self.cfg.audit_gate_m
         for c in obs["contacts"]:
             if c["source"] != "sar" or c["size_class"] != "large":
                 continue
@@ -373,7 +403,7 @@ class HunterBot:
             near = [k for k in ais_ticks if abs(k - tc) <= 1]
             if near:   # the target was broadcasting then: a detection counts only if it sits under that position
                 k = min(near, key=lambda k: abs(k - tc))
-                if math.hypot(c["x_m"] - hist[k][0] - off[0], c["y_m"] - hist[k][1] - off[1]) > gate:
+                if math.hypot(c["x_m"] - at(k)[0], c["y_m"] - at(k)[1]) > gate:
                     continue
             else:      # the target was silent: the detection must be reachable from its last fix and not another ship's AIS
                 prior = [k for k in ais_ticks if k < tc]
@@ -381,9 +411,9 @@ class HunterBot:
                     continue
                 k0 = prior[-1]
                 reach = 8.5 * (tc - k0) * self.cfg.tick_s + 3.0 * c["sigma_m"] + 2000.0
-                if math.hypot(c["x_m"] - hist[k0][0] - off[0], c["y_m"] - hist[k0][1] - off[1]) > reach:
+                if math.hypot(c["x_m"] - at(k0)[0], c["y_m"] - at(k0)[1]) > reach:
                     continue
-                if any(abs(s - tc) <= 1 and math.hypot(p[0] - c["x_m"], p[1] - c["y_m"]) <= self.EXPLAIN_GATE_M
+                if any(abs(s - tc) <= 1 and math.hypot(p[0] - c["x_m"], p[1] - c["y_m"]) <= self.cfg.explain_gate_m
                        for m, h in self.ais_hist.items() if m != self.locked_mmsi for s, p in h.items()):
                     continue
             pts.append({"tick": tc, "x": c["x_m"], "y": c["y_m"], "src": "sar", "cid": c["contact_id"]})
@@ -404,7 +434,8 @@ class HunterBot:
         n = math.hypot(x1 - x0, y1 - y0)
         if n < 1.0:
             return 0.0
-        return abs((x1 - x0) * (y0 + self._off()[1] - y) - (x0 + self._off()[0] - x) * (y1 - y0)) / n
+        ox, oy = self._off_at(last)
+        return abs((x1 - x0) * (y0 + oy - y) - (x0 + ox - x) * (y1 - y0)) / n
 
     def _stationary_pair(self, pts: list[dict]) -> tuple[dict, dict] | None:
         need = self.area["grounds_ticks"]
@@ -416,7 +447,7 @@ class HunterBot:
                     continue
                 a, b = (s, q) if s["tick"] <= q["tick"] else (q, s)
                 span = b["tick"] - a["tick"]
-                if span >= need and math.hypot(a["x"] - b["x"], a["y"] - b["y"]) <= self.STATIONARY_GATE_M:
+                if span >= need and math.hypot(a["x"] - b["x"], a["y"] - b["y"]) <= self.cfg.stationary_gate_m:
                     key = (round(self._cross_track_m(b["x"], b["y"]) / 1500.0), -span)   # nearer the heading line first, then longer
                     if best is None or key < best[0]:
                         best = (key, a, b)
@@ -431,7 +462,7 @@ class HunterBot:
         if pair is None:
             return None
         a, b = pair
-        sar = sorted((p for p in pts if p["src"] == "sar" and math.hypot(p["x"] - b["x"], p["y"] - b["y"]) <= self.STATIONARY_GATE_M),
+        sar = sorted((p for p in pts if p["src"] == "sar" and math.hypot(p["x"] - b["x"], p["y"] - b["y"]) <= self.cfg.stationary_gate_m),
                      key=lambda p: p["tick"])
         ids = [p["cid"] for p in sar]
         ais = [c for c in obs["contacts"] if c["source"] == "ais" and c["claimed_mmsi"] == self.locked_mmsi]
@@ -447,16 +478,16 @@ class HunterBot:
         hist = self.ais_hist.get(self.locked_mmsi or "", {})
         if not hist:
             return None
-        off = self._off()
         ais_ticks = sorted(hist)
         last_ais = ais_ticks[-1]
+        off = self._off_at(last_ais)
         sar = [p for p in self.target_sightings(obs) if p["src"] == "sar"]
         if t - last_ais <= 1:      # broadcasting: if it has stopped in the area, put a SAR pass on it
             x, y = hist[last_ais][0] + off[0], hist[last_ais][1] + off[1]
             recent = [hist[k] for k in ais_ticks if k >= t - 3]
             stopped = (len(recent) >= 3 and self._in_area(x, y)
                        and all(math.hypot(r[0] + off[0] - x, r[1] + off[1] - y) <= 1500.0 for r in recent))
-            if stopped and self.cluster_tasks < 2 and not any(math.hypot(p["x"] - x, p["y"] - y) <= self.STATIONARY_GATE_M for p in sar):
+            if stopped and self.cluster_tasks < 2 and not any(math.hypot(p["x"] - x, p["y"] - y) <= self.cfg.stationary_gate_m for p in sar):
                 self.cluster_tasks += 1
                 return x, y, "target has stopped in the briefed area"
             return None
@@ -468,6 +499,20 @@ class HunterBot:
             c = max(recent_sar, key=lambda p: p["tick"])
             if t + 3 >= c["tick"] + self.area["grounds_ticks"]:
                 return c["x"], c["y"], "second look at a vessel seen in the area"
+            return None
+        if self.cfg.sweep_area:
+            fx, fy = hist[last_ais][0] + off[0], hist[last_ais][1] + off[1]
+            slow = [k for k in ais_ticks if last_ais - k >= 3]
+            if slow:   # speed and course from the last two fixes; when it could reach the area centre
+                k = slow[-1]
+                v = math.hypot(hist[last_ais][0] - hist[k][0], hist[last_ais][1] - hist[k][1]) / ((last_ais - k) * self.cfg.tick_s)
+                v = min(max(v, 3.0), 8.5)
+            else:
+                v = 7.0
+            a = self.area
+            arrive = last_ais + math.hypot(a["x_m"] - fx, a["y_m"] - fy) / (v * self.cfg.tick_s)
+            if t >= arrive - 4:
+                return a["x_m"], a["y_m"], "target silent; looking at the briefed transfer area when it could arrive"
             return None
         est = self.estimate()
         return None if est is None else (est[0], est[1], "target silent; tracker estimate")

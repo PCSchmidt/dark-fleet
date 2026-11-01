@@ -1,0 +1,17 @@
+{
+  "model": "learned-runner-v3-cem-selfplay",
+  "seed": 5,
+  "rounds": 3,
+  "generations": 8,
+  "population": 24,
+  "elite": 5,
+  "seeds_per_candidate": 6,
+  "init_std_frac": 0.25,
+  "min_std_frac": 0.02,
+  "smooth": 0.3,
+  "br_candidates": 24,
+  "br_seeds": 20,
+  "heldout_seeds": 60,
+  "train_pool": ["pf_greedy", "pf_audit"],
+  "eval_hunters": ["pf_greedy", "pf_audit", "dr_rule", "pf_audit_tuned", "case_officer"]
+}

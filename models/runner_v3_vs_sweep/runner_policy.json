@@ -1,0 +1,106 @@
+{
+  "format": "darkfleet-learned-runner-v3",
+  "params": {
+    "p_transfer": 0.6722802280721688,
+    "dark_lead": 9.709780568108124,
+    "dark_tail": 0.9202197000575528,
+    "use_spoof": 0.7454593149638641,
+    "spoof_mag_km": 3.6872188455458,
+    "spoof_angle_deg": 297.1663132893074,
+    "stop_offset_m": 1089.220177207545,
+    "creep_mps": 0.07268156933297698,
+    "detour_km": 23.215647694910956,
+    "speed_frac": 0.8590913525852151,
+    "hurry_after": 0.11097756822104488
+  },
+  "bounds": {
+    "p_transfer": [
+      0.0,
+      1.0
+    ],
+    "dark_lead": [
+      0.0,
+      30.0
+    ],
+    "dark_tail": [
+      0.0,
+      24.0
+    ],
+    "use_spoof": [
+      0.0,
+      1.0
+    ],
+    "spoof_mag_km": [
+      0.0,
+      35.0
+    ],
+    "spoof_angle_deg": [
+      0.0,
+      360.0
+    ],
+    "stop_offset_m": [
+      0.0,
+      2300.0
+    ],
+    "creep_mps": [
+      0.0,
+      1.0
+    ],
+    "detour_km": [
+      -30.0,
+      30.0
+    ],
+    "speed_frac": [
+      0.65,
+      1.0
+    ],
+    "hurry_after": [
+      0.0,
+      1.0
+    ]
+  },
+  "provenance": {
+    "config": {
+      "model": "learned-runner-v3-vs-sweep-only-cem",
+      "seed": 8,
+      "rounds": 2,
+      "generations": 12,
+      "population": 32,
+      "elite": 6,
+      "seeds_per_candidate": 8,
+      "init_std_frac": 0.3,
+      "min_std_frac": 0.02,
+      "smooth": 0.3,
+      "br_candidates": 24,
+      "br_seeds": 20,
+      "heldout_seeds": 60,
+      "search_audit_jump": true,
+      "search_sweep_area": true,
+      "train_pool": [
+        "pf_audit_sweep"
+      ],
+      "eval_hunters": [
+        "pf_greedy",
+        "pf_audit",
+        "pf_audit_jump",
+        "pf_audit_sweep",
+        "case_officer_sweep"
+      ]
+    },
+    "config_hash": "58191360b06eb07d1e1b273b513c6b630ae4b45b2904f765f7f7f0dd2deac393",
+    "dataset_digest": "341d90144406027b9fa9e8f8046f7cd225e89527d98d1a5a4c746862458844fe",
+    "git": {
+      "commit": "0c56c3a2b2f3",
+      "dirty": true
+    },
+    "versions": {
+      "python": "3.14.6",
+      "numpy": "2.5.2",
+      "sklearn": "1.9.1",
+      "onnx": "1.23.2",
+      "onnxruntime": "1.31.1",
+      "skl2onnx": "1.20.0"
+    },
+    "platform": "win32"
+  }
+}

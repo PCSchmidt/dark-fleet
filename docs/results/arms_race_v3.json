@@ -1,0 +1,463 @@
+{
+  "seeds": [
+    50000,
+    50059
+  ],
+  "n": 60,
+  "hunters": [
+    "pf_greedy",
+    "pf_audit",
+    "pf_audit_jump",
+    "pf_audit_sweep",
+    "case_officer_sweep",
+    "tuned"
+  ],
+  "tuned_spec": {
+    "kind": "bot",
+    "tracker": "pf",
+    "silent_ticks_before_tasking": 3,
+    "min_ticks_between_tasks": 3,
+    "audit_ais": true,
+    "audit_tick": 8,
+    "lock_radius_m": 15000.0,
+    "stationary_gate_m": 2500.0,
+    "explain_gate_m": 800.0,
+    "audit_jump": true,
+    "sweep_area": false
+  },
+  "runners": {
+    "A spoof-after-audit": {
+      "params": {
+        "p_transfer": 0.8895679634483656,
+        "dark_lead": 16.963060073092176,
+        "dark_tail": 7.97477163014711,
+        "use_spoof": 0.9406239803469656,
+        "spoof_mag_km": 32.70991956985856,
+        "spoof_angle_deg": 266.26430112494444,
+        "stop_offset_m": 684.5943543154317,
+        "creep_mps": 0.2830779240570882,
+        "detour_km": 0.7534761792046091,
+        "speed_frac": 0.9106693524460125,
+        "hurry_after": 0.43224311380434743
+      },
+      "results": {
+        "case_officer_sweep": {
+          "runner_score": {
+            "mean": 19.166666666666668,
+            "ci95": [
+              9.989583333333337,
+              29.166666666666668
+            ]
+          },
+          "outcomes": {
+            "correct_supported": 47,
+            "insufficient_support": 2,
+            "runner_delivered": 11
+          },
+          "verified": 60,
+          "n": 60
+        },
+        "pf_audit": {
+          "runner_score": {
+            "mean": 100.0,
+            "ci95": [
+              100.0,
+              100.0
+            ]
+          },
+          "outcomes": {
+            "runner_delivered": 60
+          },
+          "verified": 60,
+          "n": 60
+        },
+        "pf_audit_jump": {
+          "runner_score": {
+            "mean": 20.416666666666668,
+            "ci95": [
+              10.416666666666666,
+              30.833333333333332
+            ]
+          },
+          "outcomes": {
+            "correct_supported": 47,
+            "insufficient_support": 1,
+            "runner_delivered": 12
+          },
+          "verified": 60,
+          "n": 60
+        },
+        "pf_audit_sweep": {
+          "runner_score": {
+            "mean": 19.166666666666668,
+            "ci95": [
+              9.989583333333337,
+              29.166666666666668
+            ]
+          },
+          "outcomes": {
+            "correct_supported": 47,
+            "insufficient_support": 2,
+            "runner_delivered": 11
+          },
+          "verified": 60,
+          "n": 60
+        },
+        "pf_greedy": {
+          "runner_score": {
+            "mean": 100.0,
+            "ci95": [
+              100.0,
+              100.0
+            ]
+          },
+          "outcomes": {
+            "runner_delivered": 60
+          },
+          "verified": 60,
+          "n": 60
+        },
+        "tuned": {
+          "runner_score": {
+            "mean": 18.333333333333332,
+            "ci95": [
+              9.166666666666666,
+              28.333333333333332
+            ]
+          },
+          "outcomes": {
+            "correct_supported": 46,
+            "insufficient_support": 4,
+            "runner_delivered": 10
+          },
+          "verified": 60,
+          "n": 60
+        }
+      }
+    },
+    "B long dark": {
+      "params": {
+        "p_transfer": 0.9803187116393222,
+        "dark_lead": 29.4756883067961,
+        "dark_tail": 8.06469201181125,
+        "use_spoof": 0.040361020474655986,
+        "spoof_mag_km": 20.8963493982858,
+        "spoof_angle_deg": 266.9960355947053,
+        "stop_offset_m": 965.7683402091297,
+        "creep_mps": 0.1904014004331903,
+        "detour_km": -23.400153821843098,
+        "speed_frac": 0.9743056332130662,
+        "hurry_after": 0.11891772711119597
+      },
+      "results": {
+        "case_officer_sweep": {
+          "runner_score": {
+            "mean": 27.083333333333332,
+            "ci95": [
+              18.333333333333332,
+              36.666666666666664
+            ]
+          },
+          "outcomes": {
+            "correct_supported": 36,
+            "insufficient_support": 1,
+            "runner_delivered": 9,
+            "wrong_identity": 14
+          },
+          "verified": 60,
+          "n": 60
+        },
+        "pf_audit": {
+          "runner_score": {
+            "mean": 100.0,
+            "ci95": [
+              100.0,
+              100.0
+            ]
+          },
+          "outcomes": {
+            "runner_delivered": 60
+          },
+          "verified": 60,
+          "n": 60
+        },
+        "pf_audit_jump": {
+          "runner_score": {
+            "mean": 100.0,
+            "ci95": [
+              100.0,
+              100.0
+            ]
+          },
+          "outcomes": {
+            "runner_delivered": 60
+          },
+          "verified": 60,
+          "n": 60
+        },
+        "pf_audit_sweep": {
+          "runner_score": {
+            "mean": 27.083333333333332,
+            "ci95": [
+              18.333333333333332,
+              36.666666666666664
+            ]
+          },
+          "outcomes": {
+            "correct_supported": 36,
+            "insufficient_support": 1,
+            "runner_delivered": 9,
+            "wrong_identity": 14
+          },
+          "verified": 60,
+          "n": 60
+        },
+        "pf_greedy": {
+          "runner_score": {
+            "mean": 100.0,
+            "ci95": [
+              100.0,
+              100.0
+            ]
+          },
+          "outcomes": {
+            "runner_delivered": 60
+          },
+          "verified": 60,
+          "n": 60
+        },
+        "tuned": {
+          "runner_score": {
+            "mean": 100.0,
+            "ci95": [
+              100.0,
+              100.0
+            ]
+          },
+          "outcomes": {
+            "runner_delivered": 60
+          },
+          "verified": 60,
+          "n": 60
+        }
+      }
+    },
+    "C pool average": {
+      "params": {
+        "p_transfer": 0.8263355643908703,
+        "dark_lead": 27.264933714048084,
+        "dark_tail": 5.155144685225972,
+        "use_spoof": 0.6340397723258161,
+        "spoof_mag_km": 20.380494754312114,
+        "spoof_angle_deg": 325.2149984078821,
+        "stop_offset_m": 975.0163061129269,
+        "creep_mps": 0.23975169847502686,
+        "detour_km": -1.1199032565359803,
+        "speed_frac": 0.8661946763796109,
+        "hurry_after": 0.4170393166950578
+      },
+      "results": {
+        "case_officer_sweep": {
+          "runner_score": {
+            "mean": 17.5,
+            "ci95": [
+              8.75,
+              27.083333333333332
+            ]
+          },
+          "outcomes": {
+            "correct_supported": 48,
+            "insufficient_support": 2,
+            "runner_delivered": 10
+          },
+          "verified": 60,
+          "n": 60
+        },
+        "pf_audit": {
+          "runner_score": {
+            "mean": 100.0,
+            "ci95": [
+              100.0,
+              100.0
+            ]
+          },
+          "outcomes": {
+            "runner_delivered": 60
+          },
+          "verified": 60,
+          "n": 60
+        },
+        "pf_audit_jump": {
+          "runner_score": {
+            "mean": 17.5,
+            "ci95": [
+              8.75,
+              27.083333333333332
+            ]
+          },
+          "outcomes": {
+            "correct_supported": 48,
+            "insufficient_support": 2,
+            "runner_delivered": 10
+          },
+          "verified": 60,
+          "n": 60
+        },
+        "pf_audit_sweep": {
+          "runner_score": {
+            "mean": 17.5,
+            "ci95": [
+              8.75,
+              27.083333333333332
+            ]
+          },
+          "outcomes": {
+            "correct_supported": 48,
+            "insufficient_support": 2,
+            "runner_delivered": 10
+          },
+          "verified": 60,
+          "n": 60
+        },
+        "pf_greedy": {
+          "runner_score": {
+            "mean": 100.0,
+            "ci95": [
+              100.0,
+              100.0
+            ]
+          },
+          "outcomes": {
+            "runner_delivered": 60
+          },
+          "verified": 60,
+          "n": 60
+        },
+        "tuned": {
+          "runner_score": {
+            "mean": 16.25,
+            "ci95": [
+              7.916666666666667,
+              25.416666666666668
+            ]
+          },
+          "outcomes": {
+            "correct_supported": 48,
+            "insufficient_support": 3,
+            "runner_delivered": 9
+          },
+          "verified": 60,
+          "n": 60
+        }
+      }
+    },
+    "D small spoof": {
+      "params": {
+        "p_transfer": 0.6722802280721688,
+        "dark_lead": 9.709780568108124,
+        "dark_tail": 0.9202197000575528,
+        "use_spoof": 0.7454593149638641,
+        "spoof_mag_km": 3.6872188455458,
+        "spoof_angle_deg": 297.1663132893074,
+        "stop_offset_m": 1089.220177207545,
+        "creep_mps": 0.07268156933297698,
+        "detour_km": 23.215647694910956,
+        "speed_frac": 0.8590913525852151,
+        "hurry_after": 0.11097756822104488
+      },
+      "results": {
+        "case_officer_sweep": {
+          "runner_score": {
+            "mean": 95.0,
+            "ci95": [
+              90.0,
+              98.75
+            ]
+          },
+          "outcomes": {
+            "insufficient_support": 4,
+            "runner_delivered": 56
+          },
+          "verified": 60,
+          "n": 60
+        },
+        "pf_audit": {
+          "runner_score": {
+            "mean": 95.0,
+            "ci95": [
+              90.0,
+              98.75
+            ]
+          },
+          "outcomes": {
+            "insufficient_support": 4,
+            "runner_delivered": 56
+          },
+          "verified": 60,
+          "n": 60
+        },
+        "pf_audit_jump": {
+          "runner_score": {
+            "mean": 95.0,
+            "ci95": [
+              90.0,
+              98.75
+            ]
+          },
+          "outcomes": {
+            "insufficient_support": 4,
+            "runner_delivered": 56
+          },
+          "verified": 60,
+          "n": 60
+        },
+        "pf_audit_sweep": {
+          "runner_score": {
+            "mean": 95.0,
+            "ci95": [
+              90.0,
+              98.75
+            ]
+          },
+          "outcomes": {
+            "insufficient_support": 4,
+            "runner_delivered": 56
+          },
+          "verified": 60,
+          "n": 60
+        },
+        "pf_greedy": {
+          "runner_score": {
+            "mean": 95.0,
+            "ci95": [
+              90.0,
+              98.75
+            ]
+          },
+          "outcomes": {
+            "insufficient_support": 4,
+            "runner_delivered": 56
+          },
+          "verified": 60,
+          "n": 60
+        },
+        "tuned": {
+          "runner_score": {
+            "mean": 44.166666666666664,
+            "ci95": [
+              31.666666666666668,
+              56.666666666666664
+            ]
+          },
+          "outcomes": {
+            "correct_supported": 29,
+            "insufficient_support": 6,
+            "runner_delivered": 25
+          },
+          "verified": 60,
+          "n": 60
+        }
+      }
+    }
+  }
+}

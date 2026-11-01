@@ -1,0 +1,55 @@
+# Rules v3: the mission requires a rule-breaking act
+
+**Date:** 2026-11-01. **Rules version:** `df-rules-3`. **Benchmark:** `darkfleet-bench-2`. **Status:** built, tested, evaluated against scripted Hunters, three generations of learned Runners and a language-model Hunter. **Owner playtest still pending.**
+**Why:** the D5 learned-Runner study found that under rules v2 *honesty dominates*: nothing in the mission required breaking a rule, so a Runner that broke none scored about 100 and the game gave deception no reason to exist ([model-cards/learned-runner.md](./model-cards/learned-runner.md)). Rules v3 fixes that incentive and implements the loitering ship-to-ship transfer (`FR-007`) in its simplest form.
+
+## What changed
+- **The mission needs a transfer.** The scenario carries `mission.transfer`: a zone (radius 3 km), `required_ticks` (12) and a loiter speed limit (1 m/s). Every tick the Runner spends inside the zone at or below that speed counts; the total need not be consecutive.
+- **Payoffs for the Runner.** Delivery after a completed transfer: 100 (`runner_delivered`). Delivery without it: 20 (`delivered_without_transfer`). Correctly identified: 0. The Hunter scores 0 in both delivery cases.
+- **Claims.** The Hunter now accuses an act, not just a ship. A claim on the Runner with at least two supporting contacts is `correct_supported` (about +100) only once the Runner has loitered `grounds_ticks` (6, less than the 12 the mission needs) *and* at least one supporting contact lies inside the zone (radius + 3 sigma). Right ship, too early: `unfounded_claim` (Hunter -25, Runner +25). Right ship, transfer done, nothing shown in the zone: `insufficient_support`. Wrong ship: -50, as before. Accusing a Runner that never transfers is therefore always -25.
+- **What each side is told.** The Runner sees the zone and its progress. The Hunter is told only a *transfer area* (radius 30 km, centred up to 12 km from the true zone) and the two tick counts; the zone and the Runner's progress never reach it. The leak harness still passes.
+- **Scenario generator** (`transfer=True`, drawn after everything else so legacy scenarios are byte-identical): the zone sits 35-65% along the Runner's direct route, offset up to 8 km. Three decoys sit near it: an anchored suezmax tanker (large on SAR; with probability 0.5 its AIS is dead for the whole episode, so a *second* dark large stationary vessel is present) and two slow fishing boats.
+- **Compatibility.** Scenarios without `mission.transfer` behave exactly as under rules v2 (all 104 earlier Python tests and all 36 earlier C++ cases pass unchanged), and `df-rules-2` replays still verify. New replays record `df-rules-3`.
+
+## Verification of the engine change
+- C++: 6 new cases (generator determinism and legacy-identity, what each role sees, speed gating, the four claim outcomes, delivery payoffs, replay verification and that loiter progress is part of the state hash). 42 cases, 194,916 assertions, all pass.
+- Python: 11 new tests (Runner kinds, Hunter never sees the zone, scripted Hunter catches a visible transfer and never accuses a Runner that makes none, the audit pass is needed against spoofing, Case Officer end to end, the new `stationary` citation assertion, bench smoke, playable session).
+- Every episode in every number below was re-verified by re-simulation.
+
+## The scripted Hunters under v3
+`pf_greedy` and `pf_audit` (D2/D3) were extended, not rewritten. A claim now needs the target seen *in the same place twice, at least `grounds_ticks` apart, inside the briefed area*, with at least one sighting a SAR detection. While the target is on AIS, the Hunter puts one SAR pass on it once it has stopped. While it is dark, the Hunter tasks SAR at the tracker estimate, then looks again at any large unexplained vessel it finds in the area. Rival loiterers (the dark decoy tanker) are ranked by distance from the target's heading line. Three later variants were added in response to what the learned Runner exploited (below): `*_jump` re-audits the AIS position whenever the target's track jumps farther than a ship can move; `*_sweep` additionally looks at the briefed area at the time a dark target could arrive.
+
+## Result 1: the benchmark now ranks agents (DarkFleet-Bench v2, held-out)
+`darkfleet-bench-2`: 6 tiers x 30 held-out seeds (5000-5029 ... 5500-5529) x 10 agents (the random agent plays each seed 3 times), 2,160 episodes, every replay re-verified (all 2,160 pass), digest `174ed28b84f8b897`. Raw: [bench/rules-v3/](./bench/rules-v3/bench-result.v1.json), table: [bench/rules-v3/LEADERBOARD.md](./bench/rules-v3/LEADERBOARD.md). The tiers are the five from bench v1 plus `visible` (the Runner transfers with AIS on). In the `honest` tier the Runner delivers without transferring, and the right answer is not to accuse.
+
+| Agent | Overall success [95% CI] | standard (dark transfer) | spoof | honest (no accusation) | false accusations | mean score |
+|---|---|---|---|---|---|---|
+| `pf_audit_sweep` | 87% [82, 91] | 83% | 93% | 100% | 4% | 80.7 |
+| `case_officer_sweep` | 86% [80, 90] | 83% | 87% | 100% | 4% | 79.4 |
+| `pf_audit` / `case_officer` | 83% [77, 88] | 70% | 93% | 100% | 3% | 77.9 |
+| `pf_greedy` / `dr_rule` / `case_officer_noaudit` | 71% [64, 77] | 70-77% | **0%** | 100% | 2% | 64.2 |
+| `random` | 3% [2, 5] | 0% | 0% | 17% | 79% | -38.9 |
+
+What it shows, and what it does not:
+- **The game discriminates now.** Under rules v2 the language-model Hunter scored 150 of 150 and the benchmark could not rank anything above the scripted agents. Here the scripted agents land between 71% and 87%, and the pairwise differences that matter are statistically clear: the audit pass is worth +0.12 success [+0.06, +0.19] (it is what beats spoofing: 93% against 0%), and the area sweep adds +0.04 success [-0.01, +0.09] and +2.7 score [-4.2, +9.6] over `pf_audit` (paired over 180 seeds; **not** separated from zero).
+- **Not accusing an innocent now means something.** All agents leave the no-transfer Runner alone (honest tier 100%), because a transfer is the only thing that grounds a claim. Accusing it would cost -25.
+- **The scripted Case Officer is again no better than the bots it wraps** (`case_officer` equals `pf_audit` on every tier, and `case_officer_sweep` is within noise of `pf_audit_sweep`): it adds auditability, a citation check and a human-approval gate, not skill.
+- **The ceiling is not reached.** Of the 180 `pf_audit_sweep` episodes: 127 correct identifications, 30 correct non-accusations, 14 deliveries it never caught, 8 wrong-vessel claims and 1 thin claim. All 8 wrong-vessel claims are in the dark-transfer tiers (standard 2, decoy_rich 3, injection_laced 3), where the dark decoy tanker is a second large stationary vessel; I did not examine each one, so I cannot say how many were the decoy.
+- The paired clean-versus-injected check (vessel names replaced by prompt-injection payloads) gives identical outcomes and identical final state hashes in 30 of 30 seeds for both `pf_greedy` and `case_officer`, as expected: no scripted agent reads names.
+- `case_officer_cal` (the D5 claim calibrator) is **not carried over**: it was trained on rules-v2 evidence and is not valid here. The anomaly detector and calibrator were not retrained for v3.
+
+## Result 2: the learned Runner now has something to learn, and it keeps finding Hunter blind spots
+Same 11-parameter policy class and search method as the D5 study (cross-entropy over a pool of Hunters, plus a searched best-response Hunter each round), retrained four times, each time against the Hunters that existed then. Held-out: 60 seeds (50000-50059), mean Runner score, the same seeds for every cell. Paying 20 for not transferring at all is the floor a Runner would take instead. Raw: [results/arms_race_v3.json](./results/arms_race_v3.json); per-run training logs and metrics in `models/runner_v3*/metrics.json`.
+
+| Runner generation (what it learned) | `pf_greedy` | `pf_audit` | `pf_audit_jump` | `pf_audit_sweep` | `case_officer_sweep` | `tuned` |
+|---|---|---|---|---|---|---|
+| **A**: spoof the AIS by about 33 km from 17 ticks before the zone to 8 after | **100** | **100** | 20 | 19 | 19 | 18 |
+| **B**: go dark for about 30 ticks before the zone | **100** | **100** | **100** | 27 | 27 | **100** |
+| **C**: pool average (trained against all four) | **100** | **100** | 18 | 18 | 18 | 16 |
+| **D**: trained against `pf_audit_sweep` alone; spoof by about 4 km | **95** | **95** | **95** | **95** | **95** | 44 |
+
+Reading it:
+1. **Under rules v3 deception is worth learning, and the Runner learned it.** Generations A, B and D each score 95-100 against Hunters that score 0-27 against them in other cells. The same policy class under rules v2 converged to honest driving.
+2. **Each exploit is a specific blind spot in my scripted Hunters, not a flaw in the rules.** A works because the Hunters audit AIS once, early, then trust it; a 33 km jump in one tick is physically impossible, and `*_jump` (re-audit on an impossible jump) fixed it. B works because the Hunters search where a particle filter says the target is, and over 30 dark ticks that spreads past the 40 km SAR footprint; they never used the briefed area, and `*_sweep` (look at the area at the time a dark target could arrive) fixed it, at the price of 14 of 60 wrong-vessel claims on the dark decoy. D works because a 4 km spoof is below the jump trigger and breaks the association between AIS and radar; the one Hunter that is not blind to it (`tuned`, searched by the best-response step) widens the stationary gate to 2.5 km and scores 29 identifications in 60.
+3. **I stopped patching after three rounds, so the scripted Hunter family is not robust, and I do not claim an equilibrium.** Generation C shows why a pool average misleads: it beats the two weakest Hunters outright and loses to the other two. Against a strong Hunter the Runner's best response is below 20, the floor it gets by not transferring, so a rational Runner would not transfer; against a weak one it gets 100.
+4. **What this does and does not establish.** It establishes that the incentive structure now exists and is two-sided (a Hunter patch removes an exploit; a Runner retrain finds the next). It does not establish balance with humans, or that a better Hunter does not exist or a better Runner (a bigger policy class, a reactive policy, reinforcement learning) would not beat `tuned`. The policy class is 11 numbers, 3 rounds of 8 generations each; most of the exploits above are things a human would find in a few games.

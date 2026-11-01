@@ -1,0 +1,113 @@
+{
+  "format": "darkfleet-learned-runner-v3",
+  "params": {
+    "p_transfer": 0.8263355643908703,
+    "dark_lead": 27.264933714048084,
+    "dark_tail": 5.155144685225972,
+    "use_spoof": 0.6340397723258161,
+    "spoof_mag_km": 20.380494754312114,
+    "spoof_angle_deg": 325.2149984078821,
+    "stop_offset_m": 975.0163061129269,
+    "creep_mps": 0.23975169847502686,
+    "detour_km": -1.1199032565359803,
+    "speed_frac": 0.8661946763796109,
+    "hurry_after": 0.4170393166950578
+  },
+  "bounds": {
+    "p_transfer": [
+      0.0,
+      1.0
+    ],
+    "dark_lead": [
+      0.0,
+      30.0
+    ],
+    "dark_tail": [
+      0.0,
+      24.0
+    ],
+    "use_spoof": [
+      0.0,
+      1.0
+    ],
+    "spoof_mag_km": [
+      0.0,
+      35.0
+    ],
+    "spoof_angle_deg": [
+      0.0,
+      360.0
+    ],
+    "stop_offset_m": [
+      0.0,
+      2300.0
+    ],
+    "creep_mps": [
+      0.0,
+      1.0
+    ],
+    "detour_km": [
+      -30.0,
+      30.0
+    ],
+    "speed_frac": [
+      0.65,
+      1.0
+    ],
+    "hurry_after": [
+      0.0,
+      1.0
+    ]
+  },
+  "provenance": {
+    "config": {
+      "model": "learned-runner-v3-sweep-cem-selfplay",
+      "seed": 7,
+      "rounds": 3,
+      "generations": 8,
+      "population": 24,
+      "elite": 5,
+      "seeds_per_candidate": 6,
+      "init_std_frac": 0.25,
+      "min_std_frac": 0.02,
+      "smooth": 0.3,
+      "br_candidates": 24,
+      "br_seeds": 20,
+      "heldout_seeds": 60,
+      "search_audit_jump": true,
+      "search_sweep_area": true,
+      "train_pool": [
+        "pf_greedy",
+        "pf_audit",
+        "pf_audit_jump",
+        "pf_audit_sweep"
+      ],
+      "eval_hunters": [
+        "pf_greedy",
+        "pf_audit",
+        "pf_audit_jump",
+        "pf_audit_sweep",
+        "dr_rule",
+        "pf_audit_tuned",
+        "case_officer",
+        "case_officer_jump",
+        "case_officer_sweep"
+      ]
+    },
+    "config_hash": "9c1dc75ae2de170d6eaa37f1b906f55366c92578f0fde15cb6bc331a43bb622b",
+    "dataset_digest": "5073119571cf7b59659d3fad4fde3cac045e23215399aab682b983f477652894",
+    "git": {
+      "commit": "0c56c3a2b2f3",
+      "dirty": true
+    },
+    "versions": {
+      "python": "3.14.6",
+      "numpy": "2.5.2",
+      "sklearn": "1.9.1",
+      "onnx": "1.23.2",
+      "onnxruntime": "1.31.1",
+      "skl2onnx": "1.20.0"
+    },
+    "platform": "win32"
+  }
+}

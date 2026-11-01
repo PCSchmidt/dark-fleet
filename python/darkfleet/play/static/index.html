@@ -51,6 +51,8 @@
   <div class="row">
     <label for="role">Play as</label>
     <select id="role"><option value="hunter">Hunter</option><option value="runner">Runner</option></select>
+    <label for="rules">Rules</label>
+    <select id="rules"><option value="3">v3: transfer required</option><option value="2">v2: original</option></select>
     <label for="seed">Seed</label><input id="seed" size="9" placeholder="random">
     <button id="newgame" class="primary">Start</button>
   </div>
@@ -66,6 +68,7 @@
     <div class="row"><button id="taskmode">Task SAR: click map</button><span id="res" class="dim"></span></div>
     <div class="row"><label><input type="checkbox" id="aid" checked> analyst overlay (tracker on your own data)</label></div>
     <div class="dim">Select a contact to claim, tick supporting evidence, then file. A wrong claim ends the game and costs points.</div>
+    <div class="dim" id="hunterRules"></div>
     <div id="contacts" role="listbox" aria-label="Contacts"></div>
     <div class="row"><button id="claim" class="danger" disabled>File claim on selected</button></div>
 
@@ -88,7 +91,7 @@
       <label for="ox">offset x</label><input id="ox" type="number" value="20000" size="7">
       <label for="oy">y</label><input id="oy" type="number" value="-10000" size="7">
       <button id="setais">Set</button></div>
-    <div class="dim">Reach the delivery circle before time runs out without being identified.</div>
+    <div class="dim" id="runnerRules">Reach the delivery circle before time runs out without being identified.</div>
   </div>
 
   <h2>Events</h2><div id="log"></div>
@@ -127,6 +130,9 @@ function render() {
   if (!S) return;
   const o = S.observation, hunter = S.role === "hunter";
   $("hunterUI").hidden = !hunter; $("runnerUI").hidden = hunter;
+  const tr = o.mission && o.mission.transfer, ta = o.brief && o.brief.transfer_area;
+  if (ta) $("hunterRules").textContent = `Rules v3. A transfer is expected in the dashed area: the target must stop and loiter ${ta.required_ticks} ticks. A claim is grounded once it has loitered ${ta.grounds_ticks} ticks, and you need a contact inside the (unknown) zone. Claiming earlier, or a target that never transfers, costs you.`;
+  if (tr) $("runnerRules").textContent = `Rules v3. You must loiter inside the yellow circle (speed at most 1 m/s) for ${tr.required_ticks} ticks in total (${tr.progress_ticks} so far), then reach the delivery circle. Arriving without the transfer pays little. Stopping makes you easy to spot: AIS on shows it, dark or spoof hides it.`;
   const mins = Math.round(o.tick * S.tick_s / 60);
   $("clock").textContent = `tick ${o.tick}/${S.duration_ticks} (${Math.floor(mins / 60)}h${String(mins % 60).padStart(2, "0")})`;
   $("hud").textContent = `${S.role.toUpperCase()}  |  ${o.status.state}${o.status.outcome !== "none" ? " - " + o.status.outcome : ""}`;
@@ -192,6 +198,14 @@ function draw() {
   const o = S.observation;
 
   if (o.mission) circle(o.mission.delivery.x_m, o.mission.delivery.y_m, o.mission.delivery.radius_m, "#7dffa8", true, "delivery");
+  if (o.mission && o.mission.transfer) {
+    const t = o.mission.transfer;
+    circle(t.x_m, t.y_m, t.radius_m, "#ffd166", false, `transfer ${t.progress_ticks}/${t.required_ticks}`);
+  }
+  if (o.brief && o.brief.transfer_area) {
+    const a = o.brief.transfer_area;
+    circle(a.x_m, a.y_m, a.radius_m, "#ffd166", true, "transfer expected somewhere in here");
+  }
   if (o.brief && o.brief.last_known) circle(o.brief.last_known.x_m, o.brief.last_known.y_m, o.brief.last_known.sigma_m * 2, "#8aa0b6", true, "last known (2σ)");
   if (S.role === "hunter") for (const p of o.resources.pending_taskings) circle(p.x_m, p.y_m, o.resources.sar_footprint_radius_m, "#ffb454", true, `SAR @t${p.exec_tick}`);
   if (taskMode && hover) circle(hover[0], hover[1], o.resources.sar_footprint_radius_m, "#ffb454", false, "");
@@ -201,6 +215,7 @@ function draw() {
     S.debrief.true_track.forEach(([, x, y], i) => { const [px, py] = w2s(x, y); i ? ctx.lineTo(px, py) : ctx.moveTo(px, py); });
     ctx.stroke();
     circle(S.debrief.delivery.x_m, S.debrief.delivery.y_m, S.debrief.delivery.radius_m, "#7dffa8", true, "delivery");
+    if (S.debrief.transfer) circle(S.debrief.transfer.x_m, S.debrief.transfer.y_m, S.debrief.transfer.radius_m, "#ffd166", false, "true transfer zone");
   }
   // AIS trails
   ctx.lineWidth = 1;
@@ -279,7 +294,7 @@ function stopAuto() { if (autoTimer) { clearInterval(autoTimer); autoTimer = nul
 
 $("newgame").onclick = async () => {
   stopAuto(); history = {}; selected = null; evidence.clear();
-  const body = { role: $("role").value }; const sd = parseInt($("seed").value, 10); if (!isNaN(sd)) body.seed = sd;
+  const body = { role: $("role").value, rules: parseInt($("rules").value, 10) }; const sd = parseInt($("seed").value, 10); if (!isNaN(sd)) body.seed = sd;
   try { const st = await api("POST", "/api/new", body); view = { cx: 0, cy: 0, scale: 0.0025 }; ingest(st); $("seed").value = st.seed; }
   catch (e) { $("log").textContent = "error: " + e.message; }
 };

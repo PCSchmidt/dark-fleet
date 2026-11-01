@@ -1,5 +1,6 @@
 # DarkFleet-Bench v1 - methodology, results and what they do not show
 
+**Rules v3 / bench-2:** see [RULES_V3.md](./RULES_V3.md) for the benchmark under the new rules; this file documents bench-1 under rules v2.
 **Gate:** D4 (see [SPEC.md](./SPEC.md) section 14). **Date:** 2026-10-31. **Bench version:** `darkfleet-bench-1`, rules `df-rules-2`.
 **License:** results and data CC BY 4.0 (see `LICENSE-DOCS`); code Apache-2.0.
 **Status:** v1 benchmark built and run on held-out seeds, extended at D5 with a calibrated agent (`case_officer_cal`, 8 agents, 1,500 episodes). **No language model is part of this benchmark's table.** Its agents are scripted. One hosted model was evaluated separately on the same seeds and scored 30 of 30 against the scripted agents' 17 to 24: see [LLM_AGENT.md](./LLM_AGENT.md). The table below is therefore a baseline-and-harness result.

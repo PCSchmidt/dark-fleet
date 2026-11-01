@@ -23,6 +23,7 @@ from ..episode import make_scenario
 from ..policies import HunterBot, HunterConfig, RunnerPolicy
 
 RUNNER_KINDS = ("dark_run", "honest", "spoof")
+RUNNER_KINDS_V3 = (*RUNNER_KINDS, "visible")   # visible: does the transfer with AIS on throughout
 
 
 @dataclass
@@ -30,6 +31,7 @@ class Session:
     role: str                      # the human's role: "hunter" or "runner"
     seed: int
     runner_kind: str = "dark_run"  # the bot Runner's behaviour when the human plays Hunter
+    rules: int = 3                 # 3: the Runner must complete a loitering transfer; 2: the original game
     scenario: dict = field(init=False)
     world: object = field(init=False)
     bot: object = field(init=False)
@@ -42,9 +44,12 @@ class Session:
     def __post_init__(self):
         if self.role not in ("hunter", "runner"):
             raise ValueError("role must be 'hunter' or 'runner'")
-        if self.runner_kind not in RUNNER_KINDS:
-            raise ValueError(f"runner_kind must be one of {RUNNER_KINDS}")
-        self.scenario = make_scenario(self.seed, brief="profile")
+        if self.rules not in (2, 3):
+            raise ValueError("rules must be 2 or 3")
+        kinds = RUNNER_KINDS_V3 if self.rules == 3 else RUNNER_KINDS
+        if self.runner_kind not in kinds:
+            raise ValueError(f"runner_kind must be one of {kinds}")
+        self.scenario = make_scenario(self.seed, brief="profile", transfer=self.rules == 3)
         self.world = core.World(json.dumps(self.scenario))
         if self.role == "hunter":
             self.bot = RunnerPolicy(kind=self.runner_kind, seed=self.seed)
@@ -127,7 +132,8 @@ class Session:
         verified = json.loads(core.verify_replay(json.dumps(self.scenario), replay_text))
         d = {"outcome": json.loads(self.world.outcome()), "verification": verified,
              "true_track": self.track, "replay_hash": json.loads(replay_text)["content_hash"],
-             "delivery": self.scenario["mission"]["delivery"]}
+             "delivery": self.scenario["mission"]["delivery"], "rules": f"df-rules-{self.rules}",
+             "transfer": self.scenario["mission"].get("transfer")}
         if self.role == "hunter" and self.bot is not None:
             d["runner_policy"] = self.runner_kind
         if self.role == "runner":
@@ -169,10 +175,10 @@ class Session:
         return self.world.replay()
 
 
-def new_session(role: str, seed: int | None = None, runner_kind: str | None = None) -> Session:
+def new_session(role: str, seed: int | None = None, runner_kind: str | None = None, rules: int = 3) -> Session:
     rng = random.Random()
     seed = seed if seed is not None else rng.randint(1, 2**31 - 1)
-    kind = runner_kind or rng.choice(RUNNER_KINDS)
-    s = Session(role=role, seed=seed, runner_kind=kind)
+    kind = runner_kind or rng.choice(RUNNER_KINDS_V3 if rules == 3 else RUNNER_KINDS)
+    s = Session(role=role, seed=seed, runner_kind=kind, rules=rules)
     s.refresh_aids()
     return s

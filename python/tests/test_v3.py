@@ -103,3 +103,63 @@ def test_bench_quick_run_under_rules_v3():
     assert all(r["replay_verified"] for r in rows)
     honest = next(r for r in rows if r["tier"] == "honest")
     assert honest["success"] and not honest["accused"]
+
+
+def test_playable_session_under_v3():
+    from darkfleet.play.session import new_session
+    s = new_session("hunter", seed=2, runner_kind="visible", rules=3)
+    assert "transfer_area" in s.state()["observation"]["brief"] and "transfer" not in json.dumps(s.state()["observation"]["brief"]).replace("transfer_area", "")
+    while not s.world.ended:
+        s.step(6)
+    d = s.state()["debrief"]
+    assert d["rules"] == "df-rules-3" and d["transfer"]["required_ticks"] == 12 and d["verification"]["code"] == "OK"
+
+    r = new_session("runner", seed=2, rules=3)
+    obs = r.state()["observation"]
+    assert obs["mission"]["transfer"]["progress_ticks"] == 0 and "brief" not in obs
+    with pytest.raises(ValueError):
+        new_session("hunter", seed=2, runner_kind="visible", rules=2)
+
+
+# ---- learned Runner (rules v3) and the Hunter variants it motivated ----------------------------------
+from pathlib import Path   # noqa: E402
+
+ROOT = Path(__file__).resolve().parents[2]
+
+
+def _learned(gen, seed):
+    from darkfleet.ml.runner_v3 import load_policy
+    return load_policy(ROOT / gen / "runner_policy.json", seed)
+
+
+def _identified(runner_gen, seeds, **cfg):
+    n = 0
+    for s in seeds:
+        r = play(scen(s), _learned(runner_gen, s), HunterBot(HunterConfig(pf_seed=s, audit_ais=True, **cfg)))
+        assert r.verified["code"] == "OK"
+        n += r.outcome["outcome"] == "correct_supported"
+    return n
+
+
+def test_learned_runner_v3_is_deterministic_and_replays_verify():
+    a = play(scen(50000), _learned("models/runner_v3", 50000), HunterBot(HunterConfig(pf_seed=50000)))
+    b = play(scen(50000), _learned("models/runner_v3", 50000), HunterBot(HunterConfig(pf_seed=50000)))
+    assert a.replay["content_hash"] == b.replay["content_hash"] and a.verified["code"] == "OK"
+
+
+def test_generation_a_spoofs_after_the_audit_and_the_jump_check_catches_it():
+    seeds = range(50000, 50006)
+    assert _identified("models/runner_v3", seeds) == 0                       # audits once, early, then trusts the AIS
+    assert _identified("models/runner_v3", seeds, audit_jump=True) >= 3      # re-audits when the track jumps
+
+
+def test_generation_b_goes_dark_and_only_the_area_sweep_finds_it():
+    seeds = range(50000, 50012)   # documented rate with the sweep is 36 of 60 (docs/RULES_V3.md); 12 seeds, loose threshold
+    assert _identified("models/runner_v3_patched", seeds, audit_jump=True) == 0
+    assert _identified("models/runner_v3_patched", seeds, audit_jump=True, sweep_area=True) >= 3
+
+
+def test_every_learned_generation_still_does_the_transfer_or_takes_the_small_payout():
+    for gen in ("models/runner_v3", "models/runner_v3_patched", "models/runner_v3_sweep", "models/runner_v3_vs_sweep"):
+        r = play(scen(50001), _learned(gen, 50001), HunterBot(HunterConfig(pf_seed=50001)))
+        assert r.outcome["outcome"] in {"runner_delivered", "delivered_without_transfer", "correct_supported", "insufficient_support"}

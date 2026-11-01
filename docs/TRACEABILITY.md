@@ -10,7 +10,7 @@ Maps requirement IDs from [REQUIREMENTS.md](./REQUIREMENTS.md) to evidence. "Par
 | FR-004 deterministic traffic | Done | `core/tests/test_d1.cpp` (generator tests) |
 | FR-005 AIS transmission/reception | Partial | report probability, innocent outages; no class-dependent intervals |
 | FR-006 Runner can go dark/spoof | Done (identity swap not implemented) | `test_actions.cpp`, `test_d1.cpp` |
-| FR-007 STS | Not started | - |
+| FR-007 STS | Partial (rules v3): a required loitering transfer in a zone (proximity, low speed, duration); no sea-state limits, no second ship, no signature model | `core/tests/test_v3.cpp`, `python/tests/test_v3.py`, `docs/RULES_V3.md` |
 | FR-008 weather | Not started | - |
 | FR-009 orbital passes | Not started (SAR passes are tasked with a fixed delay) | - |
 | FR-020 role views only | Done | `core/tests/test_leak.cpp` |
@@ -27,6 +27,7 @@ Maps requirement IDs from [REQUIREMENTS.md](./REQUIREMENTS.md) to evidence. "Par
 | FR-043 token, cost, latency metrics | Partial | `Trace.totals()`; cost is `null` when no priced model is used |
 | FR-044 MCP server | Done (in-process tested) | `agent/mcp_server.py`, `test_agent.py` |
 | FR-045 injection suite | Done (static, tool layer only) | `agent/injection.py`, `docs/spike-results/S17-static.json` |
+| Rules v3 (D5 recommendation): completing the mission requires a rule-breaking act | Built; scripted Hunters, three generations of learned Runners and (see doc) a language-model Hunter evaluated | `docs/RULES_V3.md`, `docs/bench/rules-v3/`, `docs/results/arms_race_v3.json`, `models/runner_v3*/` |
 | US-6 benchmark an agent | Built; scripted agents only | `python/darkfleet/bench.py`, `docs/BENCH.md`, `docs/bench/`, `python/tests/test_bench.py` |
 | NFR reproducibility of results | Done for the bench | three-run digest identical (`docs/spike-results/S19.json`) |
 | ML.md s2 AIS anomaly detector | Built; synthetic-only, not integrated | `ml/anomaly.py`, `docs/model-cards/anomaly-detector.md` |

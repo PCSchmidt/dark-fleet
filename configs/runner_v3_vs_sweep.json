@@ -1,0 +1,19 @@
+{
+  "model": "learned-runner-v3-vs-sweep-only-cem",
+  "seed": 8,
+  "rounds": 2,
+  "generations": 12,
+  "population": 32,
+  "elite": 6,
+  "seeds_per_candidate": 8,
+  "init_std_frac": 0.3,
+  "min_std_frac": 0.02,
+  "smooth": 0.3,
+  "br_candidates": 24,
+  "br_seeds": 20,
+  "heldout_seeds": 60,
+  "search_audit_jump": true,
+  "search_sweep_area": true,
+  "train_pool": ["pf_audit_sweep"],
+  "eval_hunters": ["pf_greedy", "pf_audit", "pf_audit_jump", "pf_audit_sweep", "case_officer_sweep"]
+}

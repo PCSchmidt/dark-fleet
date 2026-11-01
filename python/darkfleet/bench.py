@@ -67,6 +67,10 @@ AGENTS = {
     "case_officer":       "The D3 Case Officer, scripted specialists, a human-equivalent auto-approver, no model.",
     "case_officer_noaudit": "Ablation: Case Officer without the audit pass.",
     "case_officer_nodark":  "Ablation: Case Officer without the dark-evidence rule (may accuse after any silence).",
+    "pf_audit_jump":      "pf_audit that re-audits whenever the target's AIS track jumps farther than a ship can move (rules v3).",
+    "pf_audit_sweep":     "pf_audit_jump that, while the target is dark, SAR-sweeps the briefed transfer area when the target could arrive (rules v3).",
+    "case_officer_jump":  "The Case Officer with the same jump-triggered re-audit (rules v3).",
+    "case_officer_sweep": "The Case Officer with jump-triggered re-audit and the briefed-area sweep (rules v3).",
     "case_officer_cal":   "Case Officer with the D5 claim calibrator: claims carry a calibrated confidence and are withheld below 30%.",
 }
 CALIBRATOR_DIR = "models/calibrator"
@@ -139,6 +143,10 @@ def run_episode(ep: Episode) -> dict:
         rename = (lambda i, p=_payload(ep.seed): p) if tier["inject"] else None
         env = HunterEnv(ep.seed, tier["runner"], n_background=tier["n_background"], rename_background=rename, transfer=ep.transfer)
         kwargs = {"case_officer_noaudit": {"audit": False}, "case_officer_nodark": {"dark_evidence_ticks": 0}}.get(ep.agent, {})
+        analyst_cfg = {"case_officer_jump": {"audit_jump": True}, "case_officer_sweep": {"audit_jump": True, "sweep_area": True}}.get(ep.agent)
+        if analyst_cfg:
+            env = HunterEnv(ep.seed, tier["runner"], n_background=tier["n_background"], rename_background=rename, transfer=ep.transfer,
+                            analyst_cfg=analyst_cfg)
         if ep.agent == "case_officer_cal":
             from .ml.calibrator import ClaimConfidence
             kwargs = {"claim_model": ClaimConfidence(Path(__file__).resolve().parents[2] / CALIBRATOR_DIR), "claim_threshold": CLAIM_THRESHOLD}
@@ -158,7 +166,9 @@ def run_episode(ep: Episode) -> dict:
         else:
             cfg = {"dr_rule": dict(tracker="dr", require_dark_ticks=6),
                    "pf_greedy": dict(tracker="pf", require_dark_ticks=6),
-                   "pf_audit": dict(tracker="pf", require_dark_ticks=6, audit_ais=True)}[ep.agent]
+                   "pf_audit": dict(tracker="pf", require_dark_ticks=6, audit_ais=True),
+                   "pf_audit_jump": dict(tracker="pf", require_dark_ticks=6, audit_ais=True, audit_jump=True),
+                   "pf_audit_sweep": dict(tracker="pf", require_dark_ticks=6, audit_ais=True, audit_jump=True, sweep_area=True)}[ep.agent]
             hunter = HunterBot(HunterConfig(pf_seed=seed_rep, **cfg))
         r = play(scenario, RunnerPolicy(kind=tier["runner"], seed=ep.seed), hunter)
         outcome, verified, replay = r.outcome, r.verified["code"] == "OK", r.replay

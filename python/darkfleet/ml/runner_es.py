@@ -106,7 +106,11 @@ HUNTERS = {
     "dr_rule": dict(kind="bot", tracker="dr", require_dark_ticks=6),
     "pf_audit_tuned": dict(kind="bot", tracker="pf", require_dark_ticks=4, audit_ais=True, audit_tick=12, lock_radius_m=25000.0,
                            silent_ticks_before_tasking=3, min_ticks_between_tasks=5),
+    "pf_audit_jump": dict(kind="bot", tracker="pf", audit_ais=True, audit_jump=True),   # rules v3: re-audits when the AIS track jumps
+    "pf_audit_sweep": dict(kind="bot", tracker="pf", audit_ais=True, audit_jump=True, sweep_area=True),   # rules v3: also sweeps the briefed area
     "case_officer": dict(kind="officer"),
+    "case_officer_jump": dict(kind="officer", analyst_cfg={"audit_jump": True}),
+    "case_officer_sweep": dict(kind="officer", analyst_cfg={"audit_jump": True, "sweep_area": True}),
 }
 
 

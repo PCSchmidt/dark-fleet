@@ -130,7 +130,7 @@ SPEC_BY_NAME = {s["name"]: s for s in TOOL_SPECS}
 class ToolHost:
     def __init__(self, get_obs: Callable[[], dict], submit: Callable[[dict], dict], tick_s: float = 300.0,
                  seed: int = 0, n_particles: int = 1500, limits: Limits | None = None, trace: Trace | None = None,
-                 raw_names: bool = False):
+                 raw_names: bool = False, analyst_cfg: dict | None = None):
         """``raw_names=True`` returns vessel names unsanitised under a plain ``name`` key. It exists only to measure what the
         sanitiser and the ``untrusted`` labelling are worth (spike S17); never use it in the game."""
         self.raw_names = raw_names
@@ -140,7 +140,7 @@ class ToolHost:
         self.trace = trace or Trace()
         self.ledger = EvidenceLedger(tick_s)
         self.checker = CitationChecker(self.ledger)
-        self.analyst = HunterBot(HunterConfig(pf_seed=seed, n_particles=n_particles))
+        self.analyst = HunterBot(HunterConfig(pf_seed=seed, n_particles=n_particles, **(analyst_cfg or {})))
         self.proposals: dict[str, dict] = {}
         self.decisions: list[dict] = []
         self.max_silent = 0

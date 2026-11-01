@@ -97,7 +97,7 @@ class CaseOfficer:
         an = self.host.analyst
         spacing = tick - an.last_task_tick
         if an.area is not None:   # rules v3: look where and when a transfer can be seen
-            if silent is not None and silent <= 1 and tick >= 8 and not self.host.audit_proposed:
+            if silent is not None and silent <= 1 and ((tick >= 8 and not self.host.audit_proposed) or (an.reaudit and not an.audit_requested)) and not res["pending_taskings"]:
                 mmsi = est["locked_mmsi"]
                 x, y, _ = self.host.ledger.get(self.host.ledger.by_mmsi[mmsi]).last_position()
                 self.host.audit_proposed = True

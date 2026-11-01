@@ -1,0 +1,105 @@
+{
+  "format": "darkfleet-learned-runner-v3",
+  "params": {
+    "p_transfer": 0.8895679634483656,
+    "dark_lead": 16.963060073092176,
+    "dark_tail": 7.97477163014711,
+    "use_spoof": 0.9406239803469656,
+    "spoof_mag_km": 32.70991956985856,
+    "spoof_angle_deg": 266.26430112494444,
+    "stop_offset_m": 684.5943543154317,
+    "creep_mps": 0.2830779240570882,
+    "detour_km": 0.7534761792046091,
+    "speed_frac": 0.9106693524460125,
+    "hurry_after": 0.43224311380434743
+  },
+  "bounds": {
+    "p_transfer": [
+      0.0,
+      1.0
+    ],
+    "dark_lead": [
+      0.0,
+      30.0
+    ],
+    "dark_tail": [
+      0.0,
+      24.0
+    ],
+    "use_spoof": [
+      0.0,
+      1.0
+    ],
+    "spoof_mag_km": [
+      0.0,
+      35.0
+    ],
+    "spoof_angle_deg": [
+      0.0,
+      360.0
+    ],
+    "stop_offset_m": [
+      0.0,
+      2300.0
+    ],
+    "creep_mps": [
+      0.0,
+      1.0
+    ],
+    "detour_km": [
+      -30.0,
+      30.0
+    ],
+    "speed_frac": [
+      0.65,
+      1.0
+    ],
+    "hurry_after": [
+      0.0,
+      1.0
+    ]
+  },
+  "provenance": {
+    "config": {
+      "model": "learned-runner-v3-cem-selfplay",
+      "seed": 5,
+      "rounds": 3,
+      "generations": 8,
+      "population": 24,
+      "elite": 5,
+      "seeds_per_candidate": 6,
+      "init_std_frac": 0.25,
+      "min_std_frac": 0.02,
+      "smooth": 0.3,
+      "br_candidates": 24,
+      "br_seeds": 20,
+      "heldout_seeds": 60,
+      "train_pool": [
+        "pf_greedy",
+        "pf_audit"
+      ],
+      "eval_hunters": [
+        "pf_greedy",
+        "pf_audit",
+        "dr_rule",
+        "pf_audit_tuned",
+        "case_officer"
+      ]
+    },
+    "config_hash": "f56774354dff26c418295dce865419dc77998251810a7b136ed39ec718bf9203",
+    "dataset_digest": "686fab4eedc4da84089522378527d390a6b6616b5a92217b5e4141051adb2177",
+    "git": {
+      "commit": "0c56c3a2b2f3",
+      "dirty": true
+    },
+    "versions": {
+      "python": "3.14.6",
+      "numpy": "2.5.2",
+      "sklearn": "1.9.1",
+      "onnx": "1.23.2",
+      "onnxruntime": "1.31.1",
+      "skl2onnx": "1.20.0"
+    },
+    "platform": "win32"
+  }
+}

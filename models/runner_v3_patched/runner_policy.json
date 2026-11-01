@@ -1,0 +1,109 @@
+{
+  "format": "darkfleet-learned-runner-v3",
+  "params": {
+    "p_transfer": 0.9803187116393222,
+    "dark_lead": 29.4756883067961,
+    "dark_tail": 8.06469201181125,
+    "use_spoof": 0.040361020474655986,
+    "spoof_mag_km": 20.8963493982858,
+    "spoof_angle_deg": 266.9960355947053,
+    "stop_offset_m": 965.7683402091297,
+    "creep_mps": 0.1904014004331903,
+    "detour_km": -23.400153821843098,
+    "speed_frac": 0.9743056332130662,
+    "hurry_after": 0.11891772711119597
+  },
+  "bounds": {
+    "p_transfer": [
+      0.0,
+      1.0
+    ],
+    "dark_lead": [
+      0.0,
+      30.0
+    ],
+    "dark_tail": [
+      0.0,
+      24.0
+    ],
+    "use_spoof": [
+      0.0,
+      1.0
+    ],
+    "spoof_mag_km": [
+      0.0,
+      35.0
+    ],
+    "spoof_angle_deg": [
+      0.0,
+      360.0
+    ],
+    "stop_offset_m": [
+      0.0,
+      2300.0
+    ],
+    "creep_mps": [
+      0.0,
+      1.0
+    ],
+    "detour_km": [
+      -30.0,
+      30.0
+    ],
+    "speed_frac": [
+      0.65,
+      1.0
+    ],
+    "hurry_after": [
+      0.0,
+      1.0
+    ]
+  },
+  "provenance": {
+    "config": {
+      "model": "learned-runner-v3-patched-cem-selfplay",
+      "seed": 6,
+      "rounds": 3,
+      "generations": 8,
+      "population": 24,
+      "elite": 5,
+      "seeds_per_candidate": 6,
+      "init_std_frac": 0.25,
+      "min_std_frac": 0.02,
+      "smooth": 0.3,
+      "br_candidates": 24,
+      "br_seeds": 20,
+      "heldout_seeds": 60,
+      "search_audit_jump": true,
+      "train_pool": [
+        "pf_greedy",
+        "pf_audit",
+        "pf_audit_jump"
+      ],
+      "eval_hunters": [
+        "pf_greedy",
+        "pf_audit",
+        "pf_audit_jump",
+        "dr_rule",
+        "pf_audit_tuned",
+        "case_officer",
+        "case_officer_jump"
+      ]
+    },
+    "config_hash": "748bd679c4a017ad14367fdbc3ca74d26187b25390e56f11b2335dcf587f2be0",
+    "dataset_digest": "64aad780463159922978ae0e7ca352af763a940d9de73cf441cd3dcd5f64f33f",
+    "git": {
+      "commit": "0c56c3a2b2f3",
+      "dirty": true
+    },
+    "versions": {
+      "python": "3.14.6",
+      "numpy": "2.5.2",
+      "sklearn": "1.9.1",
+      "onnx": "1.23.2",
+      "onnxruntime": "1.31.1",
+      "skl2onnx": "1.20.0"
+    },
+    "platform": "win32"
+  }
+}
