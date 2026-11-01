@@ -19,6 +19,8 @@ Assertion types (the rule table, spike S14):
   chain      {type, contacts: [sar ids]}                    time-ordered SAR detections one vessel could have made
   colocated  {type, ais, sar, tol_m}                        AIS report near a SAR detection (within 1 tick)
   apart      {type, ais, sar, min_m}                        AIS report at least min_m from a SAR detection (within 1 tick)
+  stationary {type, contacts, max_move_m, min_ticks_apart}  rules v3: two reports among the cited contacts, at least
+                                                            min_ticks_apart apart, lie within max_move_m of each other
 """
 from __future__ import annotations
 
@@ -28,7 +30,7 @@ from .ledger import EvidenceLedger
 
 V_MAX_MPS = 8.5
 MAX_CITES, MAX_ASSERTIONS, MAX_TEXT = 16, 8, 600
-ASSERTION_TYPES = ("position", "identity", "silent", "size_class", "chain", "colocated", "apart")
+ASSERTION_TYPES = ("position", "identity", "silent", "size_class", "chain", "colocated", "apart", "stationary")
 
 
 def _num(x) -> bool:
@@ -185,6 +187,27 @@ class CitationChecker:
             return False, "the AIS contact has no report within 1 tick of the SAR detection"
         d = min(ds)
         return (d - ss >= a["min_m"]), ("" if d - ss >= a["min_m"] else f"AIS and SAR are only {d:.0f} m apart")
+
+    def _a_stationary(self, a, cites):
+        ids = a["contacts"]
+        if not (isinstance(ids, list) and 1 <= len(ids) <= 8 and len(set(ids)) == len(ids)):
+            return False, "stationary needs 1-8 distinct contact ids"
+        if not (_num(a["max_move_m"]) and 0 <= a["max_move_m"] <= 20000 and isinstance(a["min_ticks_apart"], int)
+                and 1 <= a["min_ticks_apart"] <= 144):
+            return False, "stationary needs 0 <= max_move_m <= 20000 and an integer 1 <= min_ticks_apart <= 144"
+        reports = []
+        for cid in ids:
+            if cid not in cites:
+                return False, f"stationary member {cid} is not cited"
+            rec = self.ledger.get(cid)
+            if rec is None:
+                return False, f"{cid} was never shown"
+            reports += [(t, x, y, s) for t, (x, y, s) in rec.history.items()]
+        for i, (t1, x1, y1, s1) in enumerate(reports):
+            for t2, x2, y2, s2 in reports[i + 1:]:
+                if abs(t2 - t1) >= a["min_ticks_apart"] and math.hypot(x2 - x1, y2 - y1) <= a["max_move_m"] + 3 * (s1 + s2):
+                    return True, ""
+        return False, f"no two reports at least {a['min_ticks_apart']} ticks apart lie within {a['max_move_m']:.0f} m of each other"
 
     # -- claim gate ---------------------------------------------------------------------
     def claim_gate(self, contact_id: str, evidence: list[str]) -> tuple[bool, list[str]]:

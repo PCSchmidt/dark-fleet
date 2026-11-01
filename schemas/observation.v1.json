@@ -81,6 +81,14 @@
           "additionalProperties": false,
           "required": ["x_m", "y_m", "radius_m"],
           "properties": {"x_m": {"type": "number"}, "y_m": {"type": "number"}, "radius_m": {"type": "number"}}
+        },
+        "transfer": {
+          "description": "Rules v3, Runner only: the loitering transfer that must be completed, and progress so far.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["x_m", "y_m", "radius_m", "required_ticks", "grounds_ticks", "progress_ticks"],
+          "properties": {"x_m": {"type": "number"}, "y_m": {"type": "number"}, "radius_m": {"type": "number"},
+                         "required_ticks": {"type": "integer"}, "grounds_ticks": {"type": "integer"}, "progress_ticks": {"type": "integer"}}
         }
       }
     },
@@ -92,6 +100,14 @@
       "properties": {
         "target_mmsi": {"type": "string", "pattern": "^[0-9]{9}$"},
         "target_class": {"type": "string"},
+        "transfer_area": {
+          "description": "Rules v3: a transfer is expected somewhere in this area and takes this many ticks of loitering.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["x_m", "y_m", "radius_m", "required_ticks", "grounds_ticks"],
+          "properties": {"x_m": {"type": "number"}, "y_m": {"type": "number"}, "radius_m": {"type": "number"},
+                         "required_ticks": {"type": "integer"}, "grounds_ticks": {"type": "integer"}}
+        },
         "last_known": {
           "description": "Profile briefing: where the target was last known (no identifier is given).",
           "type": "object",

@@ -354,6 +354,38 @@
                   "exclusiveMinimum": 0
                 }
               }
+            },
+            "transfer_area": {
+              "description": "Rules v3: what the Hunter is told about the transfer (a larger area containing the zone, and the loiter duration).",
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "x_m",
+                "y_m",
+                "radius_m",
+                "required_ticks",
+                "grounds_ticks"
+              ],
+              "properties": {
+                "x_m": {
+                  "type": "number"
+                },
+                "y_m": {
+                  "type": "number"
+                },
+                "radius_m": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "required_ticks": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "grounds_ticks": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
             }
           },
           "if": {
@@ -367,6 +399,43 @@
             "required": [
               "last_known"
             ]
+          }
+        },
+        "transfer": {
+          "description": "Rules v3: the Runner must loiter in this zone (speed at most max_speed_mps) for required_ticks in total before delivery counts in full. This is the rule-breaking act.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "x_m",
+            "y_m",
+            "radius_m",
+            "required_ticks",
+            "max_speed_mps"
+          ],
+          "properties": {
+            "x_m": {
+              "type": "number"
+            },
+            "y_m": {
+              "type": "number"
+            },
+            "radius_m": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "required_ticks": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "max_speed_mps": {
+              "type": "number",
+              "minimum": 0
+            },
+            "grounds_ticks": {
+              "description": "Loitering this long (at most required_ticks) already grounds a claim. Defaults to required_ticks.",
+              "type": "integer",
+              "minimum": 1
+            }
           }
         }
       }

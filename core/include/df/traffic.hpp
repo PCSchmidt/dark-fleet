@@ -19,6 +19,7 @@ struct GenParams {
   double ais_report_prob = 0.95;
   double outage_probability = 0.3;   // chance a background vessel has an innocent AIS fault window
   std::uint32_t sar_tasks = 6;
+  bool transfer = false;             // rules v3: the mission requires a loitering transfer; adds zone decoys
   bool brief_profile = false;        // true: Hunter is briefed with class + last-known area, not the MMSI
 };
 

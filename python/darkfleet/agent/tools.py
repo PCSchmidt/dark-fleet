@@ -112,7 +112,7 @@ TOOL_SPECS: list[dict] = [
      "inputSchema": _obj({}), "proposes": False},
     {"name": "audit_status", "description": "Result of the early AIS audit pass: does a large vessel sit under the target's broadcast position?",
      "inputSchema": _obj({}), "proposes": False},
-    {"name": "evidence_chain", "description": "Best chain of SAR detections kinematically consistent with one large vessel near the estimate.",
+    {"name": "evidence_chain", "description": "Best chain of SAR detections kinematically consistent with one large vessel near the estimate. When the brief names a transfer area: the sightings that show the target stopped in the same place for at least the grounds interval, or an empty list.",
      "inputSchema": _obj({}), "proposes": False},
     {"name": "check_citations", "description": "Verify findings (text, cites, assertions) against the evidence ledger.",
      "inputSchema": _obj({"findings": {"type": "array", "maxItems": 32, "items": _FINDING}}, ["findings"]), "proposes": False},
@@ -280,6 +280,9 @@ class ToolHost:
 
     def _t_evidence_chain(self, a):
         an = self.analyst
+        if an.area is not None:   # rules v3: the evidence is a stationary pair inside the briefed area
+            ids = an.v3_evidence(self._obs) or []
+            return {"contacts": ids, "consistent": bool(ids), "basis": "transfer"}
         if an.audit_result == "spoof_suspected":
             ids = [cid for cid, _ in sorted(an.spoof_contacts.items(), key=lambda kv: kv[1][0])]
             ticks = {an.spoof_contacts[c][0] for c in ids}

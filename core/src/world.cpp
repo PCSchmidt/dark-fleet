@@ -114,6 +114,25 @@ Status World::from_scenario(const json& s, World& out) {
         return err(hr::ErrorCode::Schema, "mission.delivery");
       if (!get(m, "target_mmsi", w.target_mmsi_) || !get(m, "target_class", w.target_class_))
         return err(hr::ErrorCode::Schema, "mission.target");
+      if (m.contains("transfer")) {
+        const json& tr = m.at("transfer");
+        if (!get(tr, "x_m", w.transfer_x_) || !get(tr, "y_m", w.transfer_y_) || !get(tr, "radius_m", w.transfer_radius_) ||
+            w.transfer_radius_ <= 0.0 || !get(tr, "required_ticks", w.transfer_required_) || w.transfer_required_ < 1 ||
+            !get(tr, "max_speed_mps", w.transfer_max_speed_) || w.transfer_max_speed_ < 0.0)
+          return err(hr::ErrorCode::Schema, "mission.transfer");
+        w.transfer_grounds_ = w.transfer_required_;  // optional: loitering this long already grounds a claim
+        if (tr.contains("grounds_ticks") && (!get(tr, "grounds_ticks", w.transfer_grounds_) || w.transfer_grounds_ < 1 ||
+                                            w.transfer_grounds_ > w.transfer_required_))
+          return err(hr::ErrorCode::Schema, "mission.transfer.grounds_ticks");
+        w.has_transfer_ = true;
+        if (m.contains("brief") && m.at("brief").contains("transfer_area")) {
+          const json& ta = m.at("brief").at("transfer_area");
+          if (!get(ta, "x_m", w.area_x_) || !get(ta, "y_m", w.area_y_) || !get(ta, "radius_m", w.area_radius_) ||
+              w.area_radius_ <= 0.0)
+            return err(hr::ErrorCode::Schema, "mission.brief.transfer_area");
+          w.has_area_ = true;
+        }
+      }
       if (m.contains("brief")) {
         const json& b = m.at("brief");
         std::string mode;
@@ -239,13 +258,29 @@ void World::finish(EpisodeState s, const Outcome& o) {
   events_.push_back({clock_.tick(), "episode_end", o.name});
 }
 
+// Rules v3: every tick the Runner spends inside the transfer zone at or below the loiter speed counts toward the
+// required total (cumulative, not necessarily consecutive).
+void World::update_transfer() {
+  if (!has_transfer_ || transfer_done_) return;
+  for (const Vessel& v : vessels_) {
+    if (!v.is_runner) continue;
+    const double dx = v.x_m - transfer_x_, dy = v.y_m - transfer_y_;
+    if (std::sqrt(dx * dx + dy * dy) <= transfer_radius_ && v.speed_mps <= transfer_max_speed_) ++transfer_ticks_;
+  }
+  if (transfer_ticks_ >= transfer_required_) transfer_done_ = true;
+}
+
 void World::check_end_conditions() {
   if (state_ != EpisodeState::Running) return;
+  update_transfer();
   for (const Vessel& v : vessels_) {
     if (!v.is_runner || delivery_radius_ <= 0.0) continue;
     const double dx = v.x_m - delivery_x_, dy = v.y_m - delivery_y_;
     if (std::sqrt(dx * dx + dy * dy) <= delivery_radius_) {
-      finish(EpisodeState::RunnerDelivered, {"runner_delivered", 0.0, 100.0});
+      if (has_transfer_ && !transfer_done_)  // arrived without doing the job
+        finish(EpisodeState::RunnerDelivered, {"delivered_without_transfer", 0.0, 20.0});
+      else
+        finish(EpisodeState::RunnerDelivered, {"runner_delivered", 0.0, 100.0});
       return;
     }
   }
@@ -384,11 +419,32 @@ Status World::apply_action(const Action& a) {
       if (idx && claimed_idx && *idx == *claimed_idx) ++supporting;
     }
     const bool is_runner = claimed_idx && vessels_[*claimed_idx].is_runner;
+    // Rules v3: the violation is the completed transfer, and the claim must show the Runner inside the zone.
+    bool at_zone = false;
+    if (has_transfer_ && claimed_idx) {
+      for (const std::string& e : distinct) {
+        const auto idx = truth_of_contact(e);
+        if (!idx || *idx != *claimed_idx) continue;
+        for (const auto& r : last_report_) {
+          if (r && ais_contact_id(seed_, Role::Hunter, r->mmsi) == e && vessels_[*claimed_idx].mmsi == r->mmsi &&
+              std::hypot(r->x_m - transfer_x_, r->y_m - transfer_y_) <= transfer_radius_ + 3.0 * r->sigma_m)
+            at_zone = true;
+        }
+        for (const SarDetection& d : sar_detections_)
+          if (sar_contact_id(seed_, Role::Hunter, d.serial) == e &&
+              std::hypot(d.x_m - transfer_x_, d.y_m - transfer_y_) <= transfer_radius_ + 3.0 * d.sigma_m)
+            at_zone = true;
+      }
+    }
     Outcome o;
     const double remaining = duration_ticks_ > clock_.tick() ? static_cast<double>(duration_ticks_ - clock_.tick()) : 0.0;
     if (!is_runner) {
       o = {"wrong_identity", -50.0, 50.0};
-    } else if (supporting >= 2 && !runner_violated_) {
+    } else if (has_transfer_ && supporting >= 2 && transfer_ticks_ < transfer_grounds_) {
+      o = {"unfounded_claim", -25.0, 25.0};  // right vessel, but it has not loitered long enough to ground a claim
+    } else if (has_transfer_ && supporting >= 2 && !at_zone) {
+      o = {"insufficient_support", 25.0, 25.0};  // transfer happened, but nothing filed shows the vessel in the zone
+    } else if (!has_transfer_ && supporting >= 2 && !runner_violated_) {
       // Rules v2: identifying the right vessel is not enough if it has done nothing wrong.
       o = {"unfounded_claim", -25.0, 25.0};
     } else if (supporting >= 2) {
@@ -435,7 +491,8 @@ PublicPicture World::public_picture() const {
 std::optional<RunnerPrivate> World::runner_private() const {
   for (const Vessel& v : vessels_) {
     if (v.is_runner)
-      return RunnerPrivate{v.x_m, v.y_m, v.speed_mps, v.course_deg, v.ais_mode, delivery_x_, delivery_y_, delivery_radius_};
+      return RunnerPrivate{v.x_m, v.y_m, v.speed_mps, v.course_deg, v.ais_mode, delivery_x_, delivery_y_, delivery_radius_,
+                           has_transfer_, transfer_x_, transfer_y_, transfer_radius_, transfer_required_, transfer_ticks_, transfer_grounds_};
   }
   return std::nullopt;
 }
@@ -451,6 +508,12 @@ HunterPrivate World::hunter_private() const {
   h.sar_remaining = sar_remaining_;
   h.sar_footprint_radius_m = sar_radius_m_;
   h.pending = pending_;
+  h.has_transfer_area = has_transfer_ && has_area_;
+  h.area_x_m = area_x_;
+  h.area_y_m = area_y_;
+  h.area_radius_m = area_radius_;
+  h.transfer_required_ticks = transfer_required_;
+  h.transfer_grounds_ticks = transfer_grounds_;
   return h;
 }
 
@@ -475,7 +538,8 @@ json World::observe(Role role) const {
 std::string World::canonical_state() const {
   std::string s = "df1;t=" + std::to_string(clock_.tick()) + ";st=" + to_string(state_) + ";sr=" +
                   std::to_string(sar_remaining_) + ";pend=" + std::to_string(pending_.size()) + ";det=" +
-                  std::to_string(sar_detections_.size()) + ";out=" + outcome_.name;
+                  std::to_string(sar_detections_.size()) + ";out=" + outcome_.name +
+                  (has_transfer_ ? ";xfer=" + std::to_string(transfer_ticks_) : std::string());
   for (const Vessel& v : vessels_) {
     s += ";" + v.id + "," + std::to_string(bits_of(v.x_m)) + "," + std::to_string(bits_of(v.y_m)) + "," +
          std::to_string(bits_of(v.speed_mps)) + "," + std::to_string(bits_of(v.course_deg)) + "," +

@@ -96,6 +96,21 @@ class CaseOfficer:
         audit = self._tool("audit_status") or {}
         an = self.host.analyst
         spacing = tick - an.last_task_tick
+        if an.area is not None:   # rules v3: look where and when a transfer can be seen
+            if silent is not None and silent <= 1 and tick >= 8 and not self.host.audit_proposed:
+                mmsi = est["locked_mmsi"]
+                x, y, _ = self.host.ledger.get(self.host.ledger.by_mmsi[mmsi]).last_position()
+                self.host.audit_proposed = True
+                p = self._tool("propose_sar_tasking", {"x_m": x, "y_m": y,
+                                                       "rationale": "Audit pass: check that a large vessel is really under the target's broadcast AIS position."})
+                if p:
+                    self.host.proposals[p["id"]]["purpose"] = "audit"
+                    proposals.append(self.host.proposals[p["id"]])
+            elif audit.get("state") != "pending":
+                task = an.v3_next_task(self.host._obs, res)
+                if task:
+                    proposals.append(self._tool("propose_sar_tasking", {"x_m": task[0], "y_m": task[1], "rationale": task[2][:300]}))
+            return [p for p in proposals if p]
         if audit.get("state") == "spoof_suspected":
             fix = an._target_fix_near(tick)
             if fix is not None and spacing >= 4 and audit["offset_m"]:
@@ -127,6 +142,17 @@ class CaseOfficer:
         if not ch or len(ch["contacts"]) < 2 or not ch["consistent"]:
             return findings, proposals
         ids = ch["contacts"]
+        if ch.get("basis") == "transfer":
+            area = self.host.analyst.area
+            findings.append({"text": f"The candidate was seen at the same place at least {area['grounds_ticks']} ticks apart, inside the briefed transfer area: it has been loitering.",
+                             "cites": ids,
+                             "assertions": [{"type": "stationary", "contacts": ids, "max_move_m": 1000.0,
+                                             "min_ticks_apart": area["grounds_ticks"]}]})
+            p = self._tool("propose_claim", {"contact_id": ids[-1], "evidence": ids,
+                                             "rationale": "The candidate loitered in the briefed transfer area, which is the rule-breaking act."})
+            if p:
+                proposals.append(p)
+            return findings, proposals
         findings.append({"text": f"{len(ids)} SAR detections are consistent with one large vessel moving at ship speeds.",
                          "cites": ids,
                          "assertions": [{"type": "chain", "contacts": ids}, {"type": "size_class", "contact": ids[0], "size_class": "large"}]})

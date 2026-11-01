@@ -99,19 +99,20 @@ PYBIND11_MODULE(darkfleet_core, m) {
 
   m.def(
       "generate_scenario",
-      [](std::uint64_t seed, int n_background, std::uint64_t duration_ticks, std::uint32_t sar_tasks, const std::string& brief, double outage_probability) {
+      [](std::uint64_t seed, int n_background, std::uint64_t duration_ticks, std::uint32_t sar_tasks, const std::string& brief, double outage_probability, bool transfer) {
         if (brief != "mmsi" && brief != "profile") throw std::invalid_argument("brief must be 'mmsi' or 'profile'");
         df::GenParams p;
         p.brief_profile = brief == "profile";
         if (!(outage_probability >= 0.0 && outage_probability <= 1.0)) throw std::invalid_argument("outage_probability must be in [0,1]");
         p.outage_probability = outage_probability;
+        p.transfer = transfer;
         p.seed = seed;
         p.n_background = n_background;
         p.duration_ticks = duration_ticks;
         p.sar_tasks = sar_tasks;
         return df::generate_scenario(p).dump();
       },
-      py::arg("seed"), py::arg("n_background") = 20, py::arg("duration_ticks") = 144, py::arg("sar_tasks") = 6, py::arg("brief") = "mmsi", py::arg("outage_probability") = 0.3);
+      py::arg("seed"), py::arg("n_background") = 20, py::arg("duration_ticks") = 144, py::arg("sar_tasks") = 6, py::arg("brief") = "mmsi", py::arg("outage_probability") = 0.3, py::arg("transfer") = false);
 
   // Returns {"code": "OK"|"E_...", "message": str, "first_bad_tick": int, "outcome": str}.
   m.def("verify_replay", [](const std::string& scenario_json, const std::string& replay_json) {

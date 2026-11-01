@@ -24,7 +24,7 @@ namespace df {
 using json = nlohmann::json;
 
 inline constexpr const char* kBuildId = "df-core-0.2.0";
-inline constexpr const char* kRulesVersion = "df-rules-2";
+inline constexpr const char* kRulesVersion = "df-rules-3";
 
 enum class Role { Hunter, Runner };
 enum class AisMode { On, Dark, Spoof };
@@ -95,12 +95,18 @@ struct HunterPrivate {
   std::uint32_t sar_remaining = 0;
   double sar_footprint_radius_m = 0;
   std::vector<PendingTask> pending;
+  bool has_transfer_area = false;  // rules v3: where a transfer is suspected, and how long it takes
+  double area_x_m = 0, area_y_m = 0, area_radius_m = 0;
+  std::uint64_t transfer_required_ticks = 0, transfer_grounds_ticks = 0;
 };
 
 struct RunnerPrivate {
   double x_m = 0, y_m = 0, speed_mps = 0, course_deg = 0;
   AisMode ais_mode = AisMode::On;
   double delivery_x_m = 0, delivery_y_m = 0, delivery_radius_m = 0;
+  bool has_transfer = false;  // rules v3
+  double transfer_x_m = 0, transfer_y_m = 0, transfer_radius_m = 0;
+  std::uint64_t transfer_required_ticks = 0, transfer_progress_ticks = 0, transfer_grounds_ticks = 0;
 };
 
 struct Event {
@@ -197,6 +203,7 @@ class World {
   void emit_ais_reports();
   void run_due_sar_passes();
   void check_end_conditions();
+  void update_transfer();
   void record_hash();
   void finish(EpisodeState s, const Outcome& o);
   std::optional<std::size_t> truth_of_contact(const std::string& contact_id) const;
@@ -221,6 +228,13 @@ class World {
   // Mission
   std::string target_mmsi_, target_class_;
   bool runner_violated_ = false;  // the Runner has gone dark or spoofed at some point (rules v2)
+  // Rules v3: the mission requires a loitering transfer inside a zone. Completing it is the rule-breaking act.
+  bool has_transfer_ = false;
+  double transfer_x_ = 0, transfer_y_ = 0, transfer_radius_ = 0, transfer_max_speed_ = 1.0;
+  std::uint64_t transfer_required_ = 0, transfer_grounds_ = 0, transfer_ticks_ = 0;
+  bool transfer_done_ = false;
+  bool has_area_ = false;
+  double area_x_ = 0, area_y_ = 0, area_radius_ = 0;
   bool brief_profile_ = false;
   double last_known_x_ = 0, last_known_y_ = 0, last_known_sigma_ = 0;
   double delivery_x_ = 0, delivery_y_ = 0, delivery_radius_ = 0;

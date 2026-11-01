@@ -22,7 +22,9 @@ VerifyResult verify_replay(const json& scenario, const json& replay) {
     const std::string version = replay.value("schema_version", "");
     if (version.rfind("1.", 0) != 0) return fail(hr::ErrorCode::Version, "unsupported replay schema_version");
     if (replay.value("title_id", "") != "dark-fleet") return fail(hr::ErrorCode::Schema, "title_id");
-    if (replay.value("rules_version", "") != kRulesVersion)
+    // df-rules-2 replays stay verifiable: v3 only differs for scenarios that carry a mission.transfer block.
+    const std::string rv = replay.value("rules_version", "");
+    if (rv != kRulesVersion && rv != "df-rules-2")
       return fail(hr::ErrorCode::Version, "rules_version mismatch: replay was recorded under different rules");
     for (const char* k : {"inputs", "chain", "n_ticks", "final_state_hash", "result", "content_hash", "scenario_hash"})
       if (!replay.contains(k)) return fail(hr::ErrorCode::Schema, std::string("missing field: ") + k);

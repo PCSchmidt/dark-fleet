@@ -111,6 +111,13 @@ json build_observation(const ObservationInputs& in) {
                          {{"x_m", in.runner->delivery_x_m},
                           {"y_m", in.runner->delivery_y_m},
                           {"radius_m", in.runner->delivery_radius_m}}}};
+      if (in.runner->has_transfer)
+        obs["mission"]["transfer"] = {{"x_m", in.runner->transfer_x_m},
+                                      {"y_m", in.runner->transfer_y_m},
+                                      {"radius_m", in.runner->transfer_radius_m},
+                                      {"required_ticks", in.runner->transfer_required_ticks},
+                                      {"grounds_ticks", in.runner->transfer_grounds_ticks},
+                                      {"progress_ticks", in.runner->transfer_progress_ticks}};
     }
   }
   if (role == Role::Hunter && in.hunter) {
@@ -123,6 +130,15 @@ json build_observation(const ObservationInputs& in) {
                                       {"tick", 0}}}};
     } else if (!in.hunter->target_mmsi.empty()) {
       obs["brief"] = {{"target_mmsi", in.hunter->target_mmsi}, {"target_class", in.hunter->target_class}};
+    }
+    if (in.hunter->has_transfer_area) {
+      // Rules v3: intelligence says a ship-to-ship transfer is expected somewhere in this area, and how long it takes.
+      if (!obs.contains("brief")) obs["brief"] = json::object();
+      obs["brief"]["transfer_area"] = {{"x_m", in.hunter->area_x_m},
+                                       {"y_m", in.hunter->area_y_m},
+                                       {"radius_m", in.hunter->area_radius_m},
+                                       {"required_ticks", in.hunter->transfer_required_ticks},
+                                       {"grounds_ticks", in.hunter->transfer_grounds_ticks}};
     }
     json pend = json::array();
     for (const PendingTask& p : in.hunter->pending)

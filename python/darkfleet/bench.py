@@ -33,6 +33,7 @@ from pathlib import Path
 import numpy as np
 
 BENCH_VERSION = "darkfleet-bench-1"
+BENCH_VERSION_V3 = "darkfleet-bench-2"   # rules v3: the Runner must complete a loitering transfer
 SCHEMA_VERSION = "bench-result.v1"
 
 TIERS = {
@@ -42,11 +43,19 @@ TIERS = {
     "decoy_rich":      {"runner": "dark_run", "n_background": 45, "inject": False, "note": "more than twice the background traffic"},
     "injection_laced": {"runner": "dark_run", "n_background": 20, "inject": True,  "note": "every background vessel name is an injection payload"},
 }
+V3_TIERS_ALL = [*TIERS, "visible"]
 SEEDS = {
-    "dev":     {t: list(range(1, 21)) for t in TIERS},
-    "heldout": {t: list(range(5000 + 100 * i, 5000 + 100 * i + 30)) for i, t in enumerate(TIERS)},
+    "dev":     {t: list(range(1, 21)) for t in V3_TIERS_ALL},
+    "heldout": {t: list(range(5000 + 100 * i, 5000 + 100 * i + 30)) for i, t in enumerate(V3_TIERS_ALL)},
 }
-EXTRA_TIERS = {"standard_injected": {**TIERS["standard"], "inject": True}}   # paired check only; not a bench tier
+EXTRA_TIERS = {"standard_injected": {**TIERS["standard"], "inject": True},   # paired check only; not a bench tier
+               # rules v3 only: the Runner does the transfer with AIS on throughout (the easy case)
+               "visible": {"runner": "visible", "n_background": 20, "inject": False, "note": "does the transfer with AIS on"}}
+V3_TIERS = [*TIERS, "visible"]
+
+
+def tiers_for(transfer: bool) -> list[str]:
+    return V3_TIERS if transfer else list(TIERS)
 ACCUSED = {"correct_supported", "insufficient_support", "wrong_identity", "unfounded_claim"}
 FALSE_ACCUSATION = {"wrong_identity", "unfounded_claim"}
 
@@ -107,6 +116,7 @@ class Episode:
     tier: str
     seed: int
     rep: int
+    transfer: bool = False
 
 
 def run_episode(ep: Episode) -> dict:
@@ -127,7 +137,7 @@ def run_episode(ep: Episode) -> dict:
         from .agent.env import HunterEnv
         from .agent.run import autopilot
         rename = (lambda i, p=_payload(ep.seed): p) if tier["inject"] else None
-        env = HunterEnv(ep.seed, tier["runner"], n_background=tier["n_background"], rename_background=rename)
+        env = HunterEnv(ep.seed, tier["runner"], n_background=tier["n_background"], rename_background=rename, transfer=ep.transfer)
         kwargs = {"case_officer_noaudit": {"audit": False}, "case_officer_nodark": {"dark_evidence_ticks": 0}}.get(ep.agent, {})
         if ep.agent == "case_officer_cal":
             from .ml.calibrator import ClaimConfidence
@@ -139,7 +149,7 @@ def run_episode(ep: Episode) -> dict:
         outcome, verified = res["outcome"], res["verification"]["code"] == "OK"
         replay = _json.loads(env.world.replay())
     else:
-        scenario = make_scenario(ep.seed, tier["n_background"], brief="profile")
+        scenario = make_scenario(ep.seed, tier["n_background"], brief="profile", transfer=ep.transfer)
         if tier["inject"]:
             _rename(scenario, _payload(ep.seed))
         seed_rep = ep.seed * 10 + ep.rep
@@ -262,12 +272,13 @@ def paired_vs(rows: list[dict], agent: str, ref: str) -> dict:
 
 
 # ---- run ------------------------------------------------------------------------------------------
-def build_jobs(seed_set: dict[str, list[int]], agents: list[str]) -> list[Episode]:
-    return [Episode(a, t, s, rep) for a in agents for t in TIERS for s in seed_set[t] for rep in range(REPEATS.get(a, 1))]
+def build_jobs(seed_set: dict[str, list[int]], agents: list[str], transfer: bool = False) -> list[Episode]:
+    return [Episode(a, t, s, rep, transfer) for a in agents for t in tiers_for(transfer) for s in seed_set[t]
+            for rep in range(REPEATS.get(a, 1))]
 
 
-def run(seed_set: dict[str, list[int]], agents: list[str], workers: int) -> list[dict]:
-    jobs = build_jobs(seed_set, agents)
+def run(seed_set: dict[str, list[int]], agents: list[str], workers: int, transfer: bool = False) -> list[dict]:
+    jobs = build_jobs(seed_set, agents, transfer)
     if workers <= 1:
         rows = [run_episode(j) for j in jobs]
     else:
@@ -277,12 +288,13 @@ def run(seed_set: dict[str, list[int]], agents: list[str], workers: int) -> list
     return rows
 
 
-def summarize(rows: list[dict], agents: list[str]) -> dict:
+def summarize(rows: list[dict], agents: list[str], tiers: list[str] | None = None) -> dict:
+    tiers = tiers or list(TIERS)
     summary = {}
     for a in agents:
         mine = [r for r in rows if r["agent"] == a]
         summary[a] = {"overall": summarize_group(mine),
-                      "by_tier": {t: summarize_group([r for r in mine if r["tier"] == t]) for t in TIERS}}
+                      "by_tier": {t: summarize_group([r for r in mine if r["tier"] == t]) for t in tiers}}
     paired = {a: paired_vs(rows, a, REFERENCE) for a in agents if a != REFERENCE and REFERENCE in agents}
     ablations = {a: paired_vs(rows, a, "case_officer") for a in agents
                  if a.startswith("case_officer_") and "case_officer" in agents}   # includes the calibrated variant
@@ -291,6 +303,7 @@ def summarize(rows: list[dict], agents: list[str]) -> dict:
 
 def leaderboard_md(res: dict) -> str:
     agents = list(res["summary"])
+    TIERS = res.get("tiers") or globals()["TIERS"]   # rules-v3 results list their own tiers
     order = sorted(agents, key=lambda a: -res["summary"][a]["overall"]["success"]["rate"])
     pct = lambda r: f"{100 * r['rate']:.0f}% [{100 * r['ci95'][0]:.0f}-{100 * r['ci95'][1]:.0f}]"
     lines = [f"# DarkFleet-Bench leaderboard ({res['bench_version']}, seeds: {res['seed_set']}, rules {res['rules_version']})", "",
@@ -325,13 +338,14 @@ def leaderboard_md(res: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
-def injection_paired(seeds: list[int], agents: tuple[str, ...] = ("pf_greedy", "case_officer"), workers: int = 1) -> dict:
+def injection_paired(seeds: list[int], agents: tuple[str, ...] = ("pf_greedy", "case_officer"), workers: int = 1,
+                     transfer: bool = False) -> dict:
     """Same standard-tier seeds, with and without injection payloads as vessel names.
 
     Names are display text only: no agent here reads them to decide anything, so outcomes should
     be identical. The check is exactly that, and that the final state hash is unchanged.
     """
-    jobs = [Episode(a, t, s, 0) for a in agents for t in ("standard", "standard_injected") for s in seeds]
+    jobs = [Episode(a, t, s, 0, transfer) for a in agents for t in ("standard", "standard_injected") for s in seeds]
     if workers <= 1:
         rows = [run_episode(j) for j in jobs]
     else:
@@ -360,6 +374,7 @@ def main() -> None:
     ap.add_argument("--seeds", choices=["dev", "heldout"], default="heldout")
     ap.add_argument("--quick", action="store_true", help="2 seeds per tier (smoke test)")
     ap.add_argument("--agents", default=",".join(AGENTS))
+    ap.add_argument("--rules", type=int, choices=[2, 3], default=2, help="3: the Runner must complete a loitering transfer (bench-2)")
     ap.add_argument("--workers", type=int, default=max(1, (os.cpu_count() or 2) - 2))
     ap.add_argument("--out", default="docs/bench")
     ap.add_argument("--from-json", default="", help="recompute summary and leaderboard from a saved result (no episodes are run)")
@@ -367,7 +382,7 @@ def main() -> None:
     args = ap.parse_args()
     if args.from_json:
         res = json.loads(Path(args.from_json).read_text(encoding="utf-8"))
-        res.update(summarize(res["episodes"], list(res["agents"])))
+        res.update(summarize(res["episodes"], list(res["agents"]), list(res["tiers"])))
         Path(args.from_json).write_text(json.dumps(res, indent=1), encoding="utf-8")
         Path(args.out).mkdir(parents=True, exist_ok=True)
         (Path(args.out) / "LEADERBOARD.md").write_text(leaderboard_md(res), encoding="utf-8")
@@ -377,17 +392,20 @@ def main() -> None:
     unknown = [a for a in agents if a not in AGENTS]
     if unknown:
         raise SystemExit(f"unknown agent(s): {unknown}")
-    seed_set = {t: (s[:2] if args.quick else s) for t, s in SEEDS[args.seeds].items()}
+    transfer = args.rules == 3
+    tier_names = tiers_for(transfer)
+    seed_set = {t: (s[:2] if args.quick else s) for t, s in SEEDS[args.seeds].items() if t in tier_names}
     t0 = time.perf_counter()
-    rows = run(seed_set, agents, args.workers)
-    res = {"schema_version": SCHEMA_VERSION, "bench_version": BENCH_VERSION, "rules_version": "df-rules-2",
+    rows = run(seed_set, agents, args.workers, transfer)
+    res = {"schema_version": SCHEMA_VERSION, "bench_version": BENCH_VERSION_V3 if transfer else BENCH_VERSION,
+           "rules_version": "df-rules-3" if transfer else "df-rules-2",
            "seed_set": args.seeds + (" (quick)" if args.quick else ""), "seeds": seed_set,
-           "tiers": TIERS, "agents": {a: AGENTS[a] for a in agents}, "reference_agent": REFERENCE,
+           "tiers": {t: (TIERS.get(t) or EXTRA_TIERS[t]) for t in tier_names}, "agents": {a: AGENTS[a] for a in agents}, "reference_agent": REFERENCE,
            "not_measured": ["calibration", "dollar cost", "weather and cloud tiers"],
-           "episodes": rows, "digest": stable_digest(rows), **summarize(rows, agents),
+           "episodes": rows, "digest": stable_digest(rows), **summarize(rows, agents, tier_names),
            "run": {"workers": args.workers, "wall_s": round(time.perf_counter() - t0, 1)}}
     if args.injection_paired:
-        res["injection_paired"] = injection_paired(seed_set["standard"], workers=args.workers)
+        res["injection_paired"] = injection_paired(seed_set["standard"], workers=args.workers, transfer=transfer)
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     (out / "bench-result.v1.json").write_text(json.dumps(res, indent=1), encoding="utf-8")

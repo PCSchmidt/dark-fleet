@@ -31,9 +31,13 @@ def _bearing_deg(dx: float, dy: float) -> float:
 class RunnerPolicy:
     """Scripted Runner. ``kind`` is one of:
 
-    honest    AIS on for the whole run; steer straight to the delivery point.
-    dark_run  go dark for a window and make one heading dogleg while dark.
+    honest    AIS on for the whole run; steer straight to the delivery point (under rules v3: does no transfer).
+    dark_run  go dark for a window and make one heading dogleg while dark (v3: go dark around the transfer instead).
     spoof     broadcast a constant offset position for the whole run.
+    visible   rules v3 only: do the transfer with AIS on throughout.
+
+    Under rules v3 (the scenario carries ``mission.transfer``) every kind except ``honest`` steers to the zone, stops in it
+    until the transfer is complete, then continues to the delivery point.
     """
 
     kind: str = "dark_run"
@@ -50,9 +54,48 @@ class RunnerPolicy:
         self.dogleg_deg = self.rng.choice([-1, 1]) * self.rng.uniform(40, 100)
         self.speed = self.max_speed_mps * self.rng.uniform(0.8, 0.95)
         self._ais_mode = "on"
+        # drawn after the legacy values so rules-v2 behaviour is unchanged
+        self.lead_ticks = self.rng.randint(5, 9)   # v3 dark_run: go dark this many ticks before reaching the zone
+        self.tail_ticks = self.rng.randint(3, 7)   # ... and come back this many ticks after leaving it
+        self._left_tick: int | None = None
+
+    def _act_transfer(self, obs: dict, tr: dict) -> list[dict]:
+        t = obs["tick"]
+        own, mission = obs["own"], obs["mission"]["delivery"]
+        done = tr["progress_ticks"] >= tr["required_ticks"]
+        if done and self._left_tick is None:
+            self._left_tick = t
+        d = math.hypot(tr["x_m"] - own["x_m"], tr["y_m"] - own["y_m"])
+        want = "on"
+        if self.kind == "spoof":
+            want = "spoof"
+        elif self.kind == "dark_run":
+            before = not done and d <= self.speed * 300.0 * self.lead_ticks
+            after = done and t - (self._left_tick or t) < self.tail_ticks
+            if before or after:
+                want = "dark"
+        out: list[dict] = []
+        if want != self._ais_mode:
+            params = {"mode": want}
+            if want == "spoof":
+                params.update({"offset_x_m": 20000.0, "offset_y_m": -10000.0})
+            out.append(action("runner", t, "set_ais_mode", params))
+            self._ais_mode = want
+        if done:
+            course, speed = _bearing_deg(mission["x_m"] - own["x_m"], mission["y_m"] - own["y_m"]), self.speed
+        elif d <= 2000.0:
+            course, speed = own["course_deg"], 0.0   # loiter in the zone
+        else:
+            course, speed = _bearing_deg(tr["x_m"] - own["x_m"], tr["y_m"] - own["y_m"]), self.speed
+        if abs(speed - own["speed_mps"]) > 1e-9 or t % 3 == 0 or d > 2000.0:
+            out.append(action("runner", t, "set_course_speed", {"course_deg": course, "speed_mps": speed}))
+        return out
 
     def act(self, obs: dict) -> list[dict]:
         t = obs["tick"]
+        tr = obs["mission"].get("transfer")
+        if tr is not None and self.kind != "honest":
+            return self._act_transfer(obs, tr)
         own, mission = obs["own"], obs["mission"]["delivery"]
         out: list[dict] = []
         want = "on"
@@ -118,6 +161,8 @@ class HunterBot:
         self.max_silent = 0
         self.lock_dist_m: float | None = None
         self.lock_margin_m: float | None = None
+        self.area: dict | None = None          # rules v3: where a transfer is expected (from the brief)
+        self.cluster_tasks = 0
 
     # tracker access for evaluation
     def estimate(self) -> tuple[float, float] | None:
@@ -129,6 +174,8 @@ class HunterBot:
 
     # -- identification (profile briefing) ---------------------------------------------
     def _ingest_ais(self, obs: dict) -> None:
+        if self.area is None:
+            self.area = (obs.get("brief") or {}).get("transfer_area")
         for c in obs["contacts"]:
             if c["source"] == "ais":
                 self.ais_hist.setdefault(c["claimed_mmsi"], {})[obs["tick"] - c["age_ticks"]] = (c["x_m"], c["y_m"])
@@ -258,17 +305,14 @@ class HunterBot:
         if self.audit_requested and self.audit_exec is None and res["pending_taskings"]:
             self.audit_exec = res["pending_taskings"][-1]["exec_tick"]
         self._audit_step(obs)
+        if self.area is not None:
+            return self._act_v3(obs, res)
         if self.audit_result == "spoof_suspected":
             return self._spoof_step(obs, res)
 
-        if (self.cfg.audit_ais and not self.audit_requested and self.locked_mmsi is not None
-                and t >= self.cfg.audit_tick and res["sar_tasks_remaining"] > 0 and not res["pending_taskings"]):
-            fix = self._target_fix_near(t)
-            if fix is not None and t - max(self.ais_hist[self.locked_mmsi]) <= 1:
-                self.audit_requested = True
-                self.last_task_tick = t
-                out.append(action("hunter", t, "task_sensor", {"sensor": "sar", "x_m": fix[0], "y_m": fix[1]}))
-                return out
+        out = self._audit_request(obs, res)
+        if out:
+            return out
         est = self.estimate()
 
         chain = self._best_chain(obs, est)
@@ -290,8 +334,163 @@ class HunterBot:
             out.append(action("hunter", t, "task_sensor", {"sensor": "sar", "x_m": est[0], "y_m": est[1]}))
         return out
 
+    def _audit_request(self, obs: dict, res: dict) -> list[dict]:
+        t = obs["tick"]
+        if (self.cfg.audit_ais and not self.audit_requested and self.locked_mmsi is not None
+                and t >= self.cfg.audit_tick and res["sar_tasks_remaining"] > 0 and not res["pending_taskings"]):
+            fix = self._target_fix_near(t)
+            if fix is not None and t - max(self.ais_hist[self.locked_mmsi]) <= 1:
+                self.audit_requested = True
+                self.last_task_tick = t
+                return [action("hunter", t, "task_sensor", {"sensor": "sar", "x_m": fix[0], "y_m": fix[1]})]
+        return []
+
+    # -- rules v3: catch the transfer --------------------------------------------------------
+    # The mission now requires the Runner to loiter in a zone. A claim is grounded once the target has been *seen* in the
+    # same place twice, at least ``grounds_ticks`` apart, inside the briefed area, with at least one of the sightings a SAR
+    # detection (the adjudicator needs a detection in the zone). Two sightings at one spot imply it stayed there.
+    STATIONARY_GATE_M = 1000.0   # two sightings this close, grounds_ticks apart, are one stationary vessel
+    EXPLAIN_GATE_M = 800.0   # a SAR detection is another ship's only if its AIS sits this close (3 sigma of both sensors)
+
+    def _off(self) -> tuple[float, float]:
+        return self.spoof_offset or (0.0, 0.0)
+
+    def _in_area(self, x: float, y: float) -> bool:
+        a = self.area
+        return math.hypot(x - a["x_m"], y - a["y_m"]) <= a["radius_m"] + 5000.0
+
+    def target_sightings(self, obs: dict) -> list[dict]:
+        """Everything attributable to the target: its (de-spoofed) AIS track, and the large SAR contacts it explains."""
+        t, off = obs["tick"], self._off()
+        hist = self.ais_hist.get(self.locked_mmsi or "", {})
+        ais_ticks = sorted(hist)
+        pts = [{"tick": k, "x": hist[k][0] + off[0], "y": hist[k][1] + off[1], "src": "ais", "cid": None} for k in ais_ticks]
+        gate = self.cfg.spoof_gate_m if self.spoof_offset else self.cfg.audit_gate_m
+        for c in obs["contacts"]:
+            if c["source"] != "sar" or c["size_class"] != "large":
+                continue
+            tc = t - c["age_ticks"]
+            near = [k for k in ais_ticks if abs(k - tc) <= 1]
+            if near:   # the target was broadcasting then: a detection counts only if it sits under that position
+                k = min(near, key=lambda k: abs(k - tc))
+                if math.hypot(c["x_m"] - hist[k][0] - off[0], c["y_m"] - hist[k][1] - off[1]) > gate:
+                    continue
+            else:      # the target was silent: the detection must be reachable from its last fix and not another ship's AIS
+                prior = [k for k in ais_ticks if k < tc]
+                if not prior:
+                    continue
+                k0 = prior[-1]
+                reach = 8.5 * (tc - k0) * self.cfg.tick_s + 3.0 * c["sigma_m"] + 2000.0
+                if math.hypot(c["x_m"] - hist[k0][0] - off[0], c["y_m"] - hist[k0][1] - off[1]) > reach:
+                    continue
+                if any(abs(s - tc) <= 1 and math.hypot(p[0] - c["x_m"], p[1] - c["y_m"]) <= self.EXPLAIN_GATE_M
+                       for m, h in self.ais_hist.items() if m != self.locked_mmsi for s, p in h.items()):
+                    continue
+            pts.append({"tick": tc, "x": c["x_m"], "y": c["y_m"], "src": "sar", "cid": c["contact_id"]})
+        return pts
+
+    def _cross_track_m(self, x: float, y: float) -> float:
+        """Distance from (x, y) to the line through the target's last two AIS fixes: a loiterer that sits on the target's
+        heading is a better candidate than one off to the side."""
+        hist = self.ais_hist.get(self.locked_mmsi or "", {})
+        ticks = sorted(hist)
+        if len(ticks) < 2:
+            return 0.0
+        last = ticks[-1]
+        old = [k for k in ticks if last - k >= 3]
+        if not old:
+            return 0.0
+        (x1, y1), (x0, y0) = hist[last], hist[old[-1]]
+        n = math.hypot(x1 - x0, y1 - y0)
+        if n < 1.0:
+            return 0.0
+        return abs((x1 - x0) * (y0 + self._off()[1] - y) - (x0 + self._off()[0] - x) * (y1 - y0)) / n
+
+    def _stationary_pair(self, pts: list[dict]) -> tuple[dict, dict] | None:
+        need = self.area["grounds_ticks"]
+        inside = [p for p in pts if self._in_area(p["x"], p["y"])]
+        best = None
+        for s in (p for p in inside if p["src"] == "sar"):
+            for q in inside:
+                if q is s:
+                    continue
+                a, b = (s, q) if s["tick"] <= q["tick"] else (q, s)
+                span = b["tick"] - a["tick"]
+                if span >= need and math.hypot(a["x"] - b["x"], a["y"] - b["y"]) <= self.STATIONARY_GATE_M:
+                    key = (round(self._cross_track_m(b["x"], b["y"]) / 1500.0), -span)   # nearer the heading line first, then longer
+                    if best is None or key < best[0]:
+                        best = (key, a, b)
+        return None if best is None else (best[1], best[2])
+
+    def v3_evidence(self, obs: dict) -> list[str] | None:
+        """Contact ids to file, or None if the target has not yet been seen to loiter."""
+        if self.area is None or self.locked_mmsi is None:
+            return None
+        pts = self.target_sightings(obs)
+        pair = self._stationary_pair(pts)
+        if pair is None:
+            return None
+        a, b = pair
+        sar = sorted((p for p in pts if p["src"] == "sar" and math.hypot(p["x"] - b["x"], p["y"] - b["y"]) <= self.STATIONARY_GATE_M),
+                     key=lambda p: p["tick"])
+        ids = [p["cid"] for p in sar]
+        ais = [c for c in obs["contacts"] if c["source"] == "ais" and c["claimed_mmsi"] == self.locked_mmsi]
+        if ais:
+            ids.append(ais[0]["contact_id"])
+        ids = list(dict.fromkeys(ids))
+        return ids if len(ids) >= 2 else None
+
+    def v3_next_task(self, obs: dict, res: dict) -> tuple[float, float, str] | None:
+        t = obs["tick"]
+        if res["sar_tasks_remaining"] < 1 or res["pending_taskings"] or t - self.last_task_tick < 4:
+            return None
+        hist = self.ais_hist.get(self.locked_mmsi or "", {})
+        if not hist:
+            return None
+        off = self._off()
+        ais_ticks = sorted(hist)
+        last_ais = ais_ticks[-1]
+        sar = [p for p in self.target_sightings(obs) if p["src"] == "sar"]
+        if t - last_ais <= 1:      # broadcasting: if it has stopped in the area, put a SAR pass on it
+            x, y = hist[last_ais][0] + off[0], hist[last_ais][1] + off[1]
+            recent = [hist[k] for k in ais_ticks if k >= t - 3]
+            stopped = (len(recent) >= 3 and self._in_area(x, y)
+                       and all(math.hypot(r[0] + off[0] - x, r[1] + off[1] - y) <= 1500.0 for r in recent))
+            if stopped and self.cluster_tasks < 2 and not any(math.hypot(p["x"] - x, p["y"] - y) <= self.STATIONARY_GATE_M for p in sar):
+                self.cluster_tasks += 1
+                return x, y, "target has stopped in the briefed area"
+            return None
+        silent = t - last_ais
+        if silent < self.cfg.silent_ticks_before_tasking:
+            return None
+        recent_sar = [p for p in sar if p["tick"] > last_ais and t - p["tick"] <= self.area["grounds_ticks"] + 3 and self._in_area(p["x"], p["y"])]
+        if recent_sar:             # a sighting inside the area: look again at the same spot after the grounds interval
+            c = max(recent_sar, key=lambda p: p["tick"])
+            if t + 3 >= c["tick"] + self.area["grounds_ticks"]:
+                return c["x"], c["y"], "second look at a vessel seen in the area"
+            return None
+        est = self.estimate()
+        return None if est is None else (est[0], est[1], "target silent; tracker estimate")
+
+    def _act_v3(self, obs: dict, res: dict) -> list[dict]:
+        t = obs["tick"]
+        out = self._audit_request(obs, res)
+        if out:
+            return out
+        ids = self.v3_evidence(obs)
+        if ids:
+            self.claimed = True
+            return [action("hunter", t, "file_claim", {"contact_id": ids[-1], "evidence": ids})]
+        task = self.v3_next_task(obs, res)
+        if task is None:
+            return []
+        self.last_task_tick = t
+        return [action("hunter", t, "task_sensor", {"sensor": "sar", "x_m": task[0], "y_m": task[1]})]
+
     # -- evidence linking ---------------------------------------------------------------
     def _best_chain(self, obs: dict, est: tuple[float, float] | None) -> list[str] | None:
+        if self.area is not None:
+            return self.v3_evidence(obs)
         """Link SAR contacts from different passes that are kinematically consistent with one
         vessel of the target's class, and that sit near the tracker's estimate."""
         if est is None:

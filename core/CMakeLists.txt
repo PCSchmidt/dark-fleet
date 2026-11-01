@@ -19,7 +19,8 @@ if(DF_BUILD_TESTS)
     tests/test_actions.cpp
     tests/test_leak.cpp
     tests/test_d1.cpp
-    tests/test_replay.cpp)
+    tests/test_replay.cpp
+    tests/test_v3.cpp)
   target_link_libraries(df_core_tests PRIVATE df::core doctest::doctest)
   target_compile_definitions(df_core_tests PRIVATE
     DF_EXAMPLE_SCENARIO="${CMAKE_SOURCE_DIR}/schemas/examples/scenario_basic.json")

@@ -165,6 +165,46 @@ json generate_scenario(const GenParams& p) {
                                              {"y_m", ry + dist * std::cos(ang)},
                                              {"sigma_m", 6000.0}}}};
   }
+  if (p.transfer) {
+    // Rules v3, drawn after everything else so legacy scenarios stay byte-identical. The transfer zone lies on the
+    // far side of the Runner's direct route, a little off the line; the Hunter is told only a larger area around it.
+    const double f = 0.35 + 0.30 * u(rng);
+    const double lat = (u(rng) - 0.5) * 16000.0;
+    const double len = std::hypot(dx - rx, dy - ry);
+    const double ux = (dx - rx) / len, uy = (dy - ry) / len;
+    const double zx = rx + (dx - rx) * f - uy * lat, zy = ry + (dy - ry) * f + ux * lat;
+    constexpr double kZoneRadiusM = 3000.0, kAreaRadiusM = 30000.0;
+    constexpr std::uint64_t kRequiredTicks = 12, kGroundsTicks = 6;
+    s["mission"]["transfer"] = {{"x_m", zx}, {"y_m", zy}, {"radius_m", kZoneRadiusM}, {"required_ticks", kRequiredTicks},
+                                {"grounds_ticks", kGroundsTicks}, {"max_speed_mps", 1.0}};
+    const double aang = u(rng) * 2.0 * 3.14159265358979323846, adist = u(rng) * 12000.0;
+    if (!s["mission"].contains("brief")) s["mission"]["brief"] = {{"mode", "mmsi"}};
+    s["mission"]["brief"]["transfer_area"] = {{"x_m", zx + adist * std::sin(aang)}, {"y_m", zy + adist * std::cos(aang)},
+                                              {"radius_m", kAreaRadiusM}, {"required_ticks", kRequiredTicks},
+                                              {"grounds_ticks", kGroundsTicks}};
+    // Zone decoys: one anchored large tanker that broadcasts normally, and two slow fishing boats.
+    json& vs = s["entities"]["vessels"];
+    const int base = p.n_background;
+    for (int k = 0; k < 3; ++k) {
+      const bool tanker = (k == 0);
+      const double ang = u(rng) * 2.0 * 3.14159265358979323846, dist = u(rng) * 9000.0;
+      json v;
+      v["id"] = "truth-zone-" + std::to_string(k);
+      v["name"] = "FICTIONAL TRADER " + pad(base + k + 1, 2);
+      v["class"] = tanker ? "suezmax" : "fishing";
+      v["mmsi"] = "9990" + pad(base + k + 100, 5);
+      v["max_speed_mps"] = tanker ? 8.5 : 5.0;
+      v["speed_mps"] = tanker ? 0.0 : 0.4;
+      v["is_runner"] = false;
+      v["ais_mode"] = "on";
+      v["secret_note"] = "BG-CANARY-" + std::to_string(rng.next_u64() % 1000000);
+      v["x_m"] = zx + dist * std::sin(ang);
+      v["y_m"] = zy + dist * std::cos(ang);
+      v["course_deg"] = u(rng) * 359.0;
+      if (tanker && u(rng) < 0.5) v["outages"] = json::array({json::array({0, p.duration_ticks})});
+      vs.push_back(std::move(v));
+    }
+  }
   return s;
 }
 

@@ -33,8 +33,9 @@ def test_bootstrap_mean_interval_contains_the_mean_and_shrinks_with_n():
 def test_seed_sets_are_disjoint_and_fixed():
     dev = {s for v in bench.SEEDS["dev"].values() for s in v}
     held = [s for v in bench.SEEDS["heldout"].values() for s in v]
-    assert not (dev & set(held)) and len(held) == len(set(held)) == 150
-    assert set(bench.SEEDS["heldout"]) == set(bench.TIERS)
+    assert not (dev & set(held)) and len(held) == len(set(held)) == 180   # 5 rules-v2 tiers + the v3-only 'visible' tier
+    assert set(bench.SEEDS["heldout"]) == set(bench.V3_TIERS)
+    assert [bench.SEEDS["heldout"][t][0] for t in bench.TIERS] == [5000, 5100, 5200, 5300, 5400]   # rules-v2 seeds unchanged
     # development seeds used in D1-D3 tuning (1-40) never appear in the held-out set
     assert not set(range(1, 41)) & set(held)
 
