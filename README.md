@@ -2,10 +2,11 @@
 
 An asymmetric hidden-information cat-and-mouse game on a photoreal ocean: a fictional covert tanker versus analysts, aircraft, cutters and satellites. Real geography; entirely fictional vessels, companies and incidents.
 
-**Status:** D0 and D1 complete; D2 to D5 built, a language-model Hunter evaluated, and **rules v3** (the mission requires a loitering transfer) built and evaluated; owner playtest pending. Engine-independent C++ core with traffic generator, AIS and SAR sensors, claims and scoring, verified replays and a role-filter leak harness; Python trackers and bots; a local 2D map client where you can play either role against a bot; an agent layer (Hunter tool surface, citation checker, Case Officer, MCP server, injection suite). See [docs/D0_EVIDENCE.md](docs/D0_EVIDENCE.md), [docs/D1_EVIDENCE.md](docs/D1_EVIDENCE.md) and [docs/D2_EVIDENCE.md](docs/D2_EVIDENCE.md). It is playable but **not balanced**, and nobody has playtested it yet.
+**Status:** D0 and D1 complete; D2 to D5 built, a language-model Hunter evaluated, and **rules v3** (the mission requires a loitering transfer) built and evaluated; owner playtest pending. Engine-independent C++ core with traffic generator, AIS and SAR sensors, claims and scoring, verified replays and a role-filter leak harness; Python trackers and bots; a local 2D map client where you can play either role against a bot; an agent layer (Hunter tool surface, citation checker, Case Officer, MCP server, injection suite). See [docs/D0_EVIDENCE.md](docs/D0_EVIDENCE.md), [docs/D1_EVIDENCE.md](docs/D1_EVIDENCE.md) and [docs/D2_EVIDENCE.md](docs/D2_EVIDENCE.md). It is playable but **not balanced**; the owner has played the guided practice games only. See [docs/STATUS.md](docs/STATUS.md).
 
 | Document | Purpose |
 |---|---|
+| [docs/STATUS.md](docs/STATUS.md) | Where things stand, playtest status, open design questions, experiments not run |
 | [docs/RULES_V3.md](docs/RULES_V3.md) | Rules v3: the mission needs a loitering transfer; benchmark v2, three generations of learned Runners and what each exploited, limits |
 | [docs/LLM_AGENT.md](docs/LLM_AGENT.md) | A hosted language model as the Hunter: tool use (S15), prompt injection (S17), cost, limits |
 | [docs/D5_EVIDENCE.md](docs/D5_EVIDENCE.md) | D5 machine learning: three models, held-out results, the learned-Runner finding, limits |
@@ -49,7 +50,7 @@ Requires CMake 3.21+, a C++20 compiler and Python 3.10+.
 PYTHONPATH=build/python:python python -m darkfleet.play.server
 # then open http://127.0.0.1:8765/   (on Windows use ';' in PYTHONPATH)
 ```
-Choose Hunter or Runner, choose the rules (v3, the default, makes the Runner loiter in a transfer zone; v2 is the original game), and press Start. You act on the same role-filtered observations the bots get; the true Runner track is shown only in the debrief, after the replay has been verified by re-simulation. Standard library only; the server binds to localhost.
+New to it? Press **Guided practice: Hunter** or **Guided practice: Runner**: a fixed game with a step-by-step coach that explains every move (it uses only what you can see). Otherwise choose Hunter or Runner, choose the rules (v3, the default, makes the Runner loiter in a transfer zone; v2 is the original game), and press Start. You act on the same role-filtered observations the bots get; the true Runner track is shown only in the debrief, after the replay has been verified by re-simulation. Standard library only; the server binds to localhost.
 
 Hunter games include an optional **Case Officer** panel: it proposes SAR taskings and claims with cited evidence and a visible tool trace, and nothing happens until you approve. Start with `--no-agents` to turn it off; the game is fully playable without it. A model can write the closing summary if you set `DF_LLM=anthropic` and `ANTHROPIC_API_KEY` (untested against the live API; the default needs no model).
 
