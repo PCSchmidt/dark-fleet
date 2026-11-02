@@ -163,3 +163,44 @@ def test_every_learned_generation_still_does_the_transfer_or_takes_the_small_pay
     for gen in ("models/runner_v3", "models/runner_v3_patched", "models/runner_v3_sweep", "models/runner_v3_vs_sweep"):
         r = play(scen(50001), _learned(gen, 50001), HunterBot(HunterConfig(pf_seed=50001)))
         assert r.outcome["outcome"] in {"runner_delivered", "delivered_without_transfer", "correct_supported", "insufficient_support"}
+
+
+# ---- guided practice (play/coach.py) -----------------------------------------------------------------
+def _follow_hunter_coach(seed):
+    from darkfleet.play.session import new_session
+    s = new_session("hunter", seed=seed, runner_kind="visible", rules=3, coach=True)
+    while not s.world.ended:
+        b = s.state()["coach"].get("button")
+        if b and b["kind"] == "task_sar":
+            s.act([{"action_type": "task_sensor", "params": {"sensor": "sar", "x_m": b["x_m"], "y_m": b["y_m"]}}])
+        elif b and b["kind"] == "select":
+            s.act([{"action_type": "file_claim", "params": {"contact_id": b["selected"], "evidence": b["evidence"]}}])
+        s.step(1)
+    return s.state()["debrief"]["outcome"]
+
+
+def test_practice_game_for_the_hunter_is_won_by_following_the_coach():
+    o = _follow_hunter_coach(2)         # the fixed practice seed in the client
+    assert o["outcome"] == "correct_supported" and o["hunter_score"] > 100
+
+
+def test_practice_game_for_the_runner_is_won_by_following_the_coach():
+    from darkfleet.play.session import new_session
+    s = new_session("runner", seed=2, rules=3, coach=True)
+    while not s.world.ended:
+        b = s.state()["coach"].get("button")
+        if b:
+            s.act(b["orders"])
+        s.step(1)
+    assert s.state()["debrief"]["outcome"]["outcome"] == "runner_delivered"
+
+
+def test_coach_text_never_contains_the_true_zone_or_runner_position():
+    from darkfleet.play.session import new_session
+    from darkfleet_core import evaluation as truth
+    s = new_session("hunter", seed=2, runner_kind="visible", rules=3, coach=True)
+    zone = s.scenario["mission"]["transfer"]
+    for _ in range(40):
+        c = json.dumps(s.state()["coach"])
+        assert str(round(zone["x_m"])) not in c and str(round(zone["y_m"])) not in c
+        s.step(1)

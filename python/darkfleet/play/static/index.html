@@ -47,6 +47,18 @@
   <h1>Dark Fleet</h1>
   <div class="dim">Fictional scenario. Positions are metres east/north of the region origin.</div>
 
+  <div id="coachBox" class="card" hidden style="border-color:#ffd166">
+    <div class="row"><b id="coachTitle"></b><span id="coachStep" class="dim"></span></div>
+    <div id="coachText"></div>
+    <div class="row"><button id="coachBtn" class="primary" hidden></button></div>
+  </div>
+
+  <h2>Start here</h2>
+  <div class="row"><button id="pracH" class="primary">Guided practice: Hunter</button><button id="pracR" class="primary">Guided practice: Runner</button></div>
+  <div class="dim">A fixed practice game with step-by-step hints. Or start a normal game below.</div>
+  <details><summary>What is this game?</summary>
+    <div class="card">A <b>Runner</b> (a tanker) must meet another ship at sea, stop for a while (the <i>transfer</i>), then sail to its delivery port. A <b>Hunter</b> with limited radar passes must catch it stopped at the meeting place. Neither side sees the other directly. The Hunter sees ship position reports (AIS, blue triangles) which the Runner can switch off or fake, and radar echoes (orange diamonds, no names) which it cannot. The Hunter wins by correctly accusing the Runner with evidence; the Runner wins by completing the transfer and delivering unaccused.<br>Time is in 5-minute ticks. Nothing happens while you wait: use +1 / +6 / Auto to let time pass.</div></details>
+
   <h2>New game</h2>
   <div class="row">
     <label for="role">Play as</label>
@@ -158,6 +170,13 @@ function render() {
     const add = (t, cls) => { const p = document.createElement("div"); p.textContent = t; if (cls) p.className = cls; d.appendChild(p); };
     add("DEBRIEF", "dim");
     add(`Outcome: ${oc.outcome}   Hunter ${oc.hunter_score.toFixed(1)}  |  Runner ${oc.runner_score.toFixed(1)}`);
+    const why = { correct_supported: "The Hunter accused the right ship, after it had been loitering long enough, backed by evidence from inside the transfer zone.",
+      runner_delivered: "The Runner finished the transfer and reached the delivery circle without being correctly accused.",
+      delivered_without_transfer: "The Runner reached the delivery circle but never did the transfer, so it scored only a little.",
+      unfounded_claim: "The Hunter accused the right ship too early (before it had loitered long enough) or the ship was not transferring. That costs the Hunter.",
+      insufficient_support: "Right ship, but the Hunter had no evidence from inside the transfer zone.",
+      wrong_identity: "The Hunter accused a different ship, not the Runner. That costs 50 points." };
+    if (why[oc.outcome]) add(why[oc.outcome], "dim");
     add(`Replay verified by re-simulation: ${x.verification.code}`, x.verification.code === "OK" ? "good" : "bad");
     if (x.runner_policy) add(`The bot Runner was playing: ${x.runner_policy}`);
     (x.hunter_notes || []).forEach(n => add("Hunter bot: " + n, "dim"));
@@ -168,7 +187,16 @@ function render() {
     add("Pink line = the Runner's true track.", "dim");
     const a = document.createElement("a"); a.href = "/api/replay"; a.textContent = "Download replay"; a.download = "replay.json"; d.appendChild(a);
   } else d.hidden = true;
+  renderCoach();
   draw();
+}
+function renderCoach() {
+  const c = S && S.coach, box = $("coachBox");
+  box.hidden = !c; if (!c) return;
+  $("coachTitle").textContent = c.title; $("coachStep").textContent = c.of ? `  (step ${c.step} of ${c.of})` : "";
+  $("coachText").textContent = c.text;
+  const b = $("coachBtn"), btn = c.button;
+  b.hidden = !btn; if (btn) { b.textContent = btn.label; b.disabled = S.ended; }
 }
 function renderContacts() {
   const box = $("contacts"); box.replaceChildren();
@@ -178,8 +206,8 @@ function renderContacts() {
     const ck = document.createElement("input"); ck.type = "checkbox"; ck.checked = evidence.has(c.contact_id);
     ck.onclick = e => { e.stopPropagation(); ck.checked ? evidence.add(c.contact_id) : evidence.delete(c.contact_id); };
     const t = document.createElement("span");
-    t.textContent = c.source === "ais" ? `AIS ${c.claimed_mmsi} ${c.claimed_name}` : `SAR ${c.size_class}`;
-    const a = document.createElement("span"); a.className = "dim"; a.textContent = `age ${c.age_ticks}`;
+    t.textContent = c.source === "ais" ? `▲ AIS report: ${c.claimed_name}` : `◆ Radar echo: ${c.size_class} ship, no name`;
+    const a = document.createElement("span"); a.className = "dim"; a.textContent = c.age_ticks ? `${c.age_ticks} ticks old` : "now";
     row.append(ck, t, a);
     row.onclick = () => { selected = c.contact_id; $("claim").disabled = S.ended; renderContacts(); draw(); };
     box.appendChild(row);
@@ -243,6 +271,12 @@ function draw() {
     ctx.globalAlpha = 1;
     if (sel) { ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(px, py, 12, 0, 7); ctx.stroke(); ctx.lineWidth = 1; }
   }
+  if (S.coach && S.coach.highlight) for (const c of o.contacts) {
+    const lab = S.coach.highlight[c.contact_id]; if (!lab) continue;
+    const [px, py] = w2s(c.x_m, c.y_m);
+    ctx.strokeStyle = "#ffd166"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(px, py, 18, 0, 7); ctx.stroke();
+    ctx.fillStyle = "#ffd166"; ctx.font = "bold 12px sans-serif"; ctx.fillText(lab, px + 22, py - 14); ctx.lineWidth = 1;
+  }
   if (o.own) {
     const [px, py] = w2s(o.own.x_m, o.own.y_m), a = o.own.course_deg * Math.PI / 180;
     ctx.fillStyle = "#7dffa8"; ctx.beginPath(); ctx.arc(px, py, 6, 0, 7); ctx.fill();
@@ -292,11 +326,22 @@ async function act(actions) {
 async function step(n) { try { ingest(await api("POST", "/api/step", { n })); } catch (e) { $("log").textContent = "error: " + e.message; } }
 function stopAuto() { if (autoTimer) { clearInterval(autoTimer); autoTimer = null; $("auto").textContent = "Auto"; } }
 
-$("newgame").onclick = async () => {
-  stopAuto(); history = {}; selected = null; evidence.clear();
-  const body = { role: $("role").value, rules: parseInt($("rules").value, 10) }; const sd = parseInt($("seed").value, 10); if (!isNaN(sd)) body.seed = sd;
-  try { const st = await api("POST", "/api/new", body); view = { cx: 0, cy: 0, scale: 0.0025 }; ingest(st); $("seed").value = st.seed; }
+async function start(body) {
+  stopAuto(); history = {}; selected = null; evidence.clear(); $("officerOut").replaceChildren();
+  try { const st = await api("POST", "/api/new", body); view = { cx: 0, cy: 0, scale: 0.0025 }; ingest(st); $("seed").value = st.seed; $("role").value = st.role; }
   catch (e) { $("log").textContent = "error: " + e.message; }
+}
+$("newgame").onclick = () => {
+  const body = { role: $("role").value, rules: parseInt($("rules").value, 10) }; const sd = parseInt($("seed").value, 10); if (!isNaN(sd)) body.seed = sd;
+  return start(body);
+};
+$("pracH").onclick = () => start({ role: "hunter", rules: 3, seed: 2, runner_kind: "visible", coach: true });
+$("pracR").onclick = () => start({ role: "runner", rules: 3, seed: 2, coach: true });
+$("coachBtn").onclick = async () => {
+  const b = S && S.coach && S.coach.button; if (!b) return;
+  if (b.kind === "task_sar") await act([{ action_type: "task_sensor", params: { sensor: "sar", x_m: b.x_m, y_m: b.y_m } }]);
+  else if (b.kind === "orders") await act(b.orders);
+  else if (b.kind === "select") { selected = b.selected; evidence = new Set(b.evidence); $("claim").disabled = S.ended; renderContacts(); draw(); renderCoach(); }
 };
 $("s1").onclick = () => step(1); $("s6").onclick = () => step(6);
 $("auto").onclick = () => {

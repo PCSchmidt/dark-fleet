@@ -5,7 +5,7 @@
 Single local player, bound to 127.0.0.1. Endpoints:
     GET  /                 the client
     GET  /api/state        current role-filtered state (+ debrief once the episode has ended)
-    POST /api/new          {"role": "hunter"|"runner", "seed"?: int, "runner_kind"?: str, "rules"?: 2|3 (default 3)}
+    POST /api/new          {"role": "hunter"|"runner", "seed"?: int, "runner_kind"?: str, "rules"?: 2|3 (default 3), "coach"?: bool (guided practice hints)}
     POST /api/act          {"actions": [ActionV1-ish dicts without role/tick]}
     POST /api/step         {"n": 1}
     GET  /api/replay       the verified replay (only after the episode has ended)
@@ -49,7 +49,7 @@ class App:
                 return 200, (STATIC / "index.html").read_text(encoding="utf-8"), "text/html; charset=utf-8"
             if method == "POST" and path == "/api/new":
                 try:
-                    self.session = new_session(str(body.get("role", "hunter")), body.get("seed"), body.get("runner_kind"), int(body.get("rules", 3)))
+                    self.session = new_session(str(body.get("role", "hunter")), body.get("seed"), body.get("runner_kind"), int(body.get("rules", 3)), bool(body.get("coach", False)))
                 except (ValueError, TypeError) as e:
                     return 400, {"error": str(e)}, "application/json"
                 return 200, self.session.state(), "application/json"

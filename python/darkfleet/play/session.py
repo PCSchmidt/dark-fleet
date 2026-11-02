@@ -21,6 +21,7 @@ from ..agent.llm import default_llm
 from ..agent.tools import ToolError, ToolHost
 from ..episode import make_scenario
 from ..policies import HunterBot, HunterConfig, RunnerPolicy
+from .coach import HunterCoach, RunnerCoach
 
 RUNNER_KINDS = ("dark_run", "honest", "spoof")
 RUNNER_KINDS_V3 = (*RUNNER_KINDS, "visible")   # visible: does the transfer with AIS on throughout
@@ -32,6 +33,7 @@ class Session:
     seed: int
     runner_kind: str = "dark_run"  # the bot Runner's behaviour when the human plays Hunter
     rules: int = 3                 # 3: the Runner must complete a loitering transfer; 2: the original game
+    coach: bool = False            # guided practice: step-by-step hints computed from the human's own observation only
     scenario: dict = field(init=False)
     world: object = field(init=False)
     bot: object = field(init=False)
@@ -60,6 +62,7 @@ class Session:
             self.analyst = self.host.analyst
         else:
             self.bot = HunterBot(HunterConfig(pf_seed=self.seed, audit_ais=True))
+        self._coach = (HunterCoach() if self.role == "hunter" else RunnerCoach()) if self.coach else None
         self._record_truth()
 
     # -- helpers ------------------------------------------------------------------------
@@ -94,6 +97,8 @@ class Session:
                "observation": obs, "rejections": self.rejections[-20:]}
         if self.role == "hunter":
             out["analyst"] = self._analyst_cache
+        if self._coach is not None:
+            out["coach"] = self._coach.update(obs)
         if self.world.ended:
             out["debrief"] = self.debrief()
         return out
@@ -175,10 +180,10 @@ class Session:
         return self.world.replay()
 
 
-def new_session(role: str, seed: int | None = None, runner_kind: str | None = None, rules: int = 3) -> Session:
+def new_session(role: str, seed: int | None = None, runner_kind: str | None = None, rules: int = 3, coach: bool = False) -> Session:
     rng = random.Random()
     seed = seed if seed is not None else rng.randint(1, 2**31 - 1)
     kind = runner_kind or rng.choice(RUNNER_KINDS_V3 if rules == 3 else RUNNER_KINDS)
-    s = Session(role=role, seed=seed, runner_kind=kind, rules=rules)
+    s = Session(role=role, seed=seed, runner_kind=kind, rules=rules, coach=coach)
     s.refresh_aids()
     return s
